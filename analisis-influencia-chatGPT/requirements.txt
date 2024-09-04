@@ -10,6 +10,7 @@ scikit-learn
 python-multipart
 openpyxl
 numpy
+xgboost
 
 
-pip install fastapi uvicorn openai tiktoken markdown pandas statsmodels faiss-cpu scikit-learn python-multipart openpyxl numpy
+pip install fastapi uvicorn openai tiktoken markdown pandas statsmodels faiss-cpu scikit-learn python-multipart openpyxl numpy xgboost

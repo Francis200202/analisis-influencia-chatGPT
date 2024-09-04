@@ -272,15 +272,20 @@ async function loadNotes() {
             <table class="min-w-full bg-white">
                 <tbody>
         `;
-
-        // Insert table rows based on fetched data
-        for (const [key, value] of Object.entries(data)) {
+        if (!data || Object.keys(data).length === 0) {
             tableHTML += `
-                <tr>
-                    <td class="py-2 px-4 border-b">${key}</td>
-                    <td class="py-2 px-4 border-b">${value}</td>
-                </tr>
+                <p>No hay notas disponibles.</p>
             `;
+        }else{
+            // Insert table rows based on fetched data
+            for (const [key, value] of Object.entries(data)) {
+                tableHTML += `
+                    <tr>
+                        <td class="py-2 px-4 border-b">${key}</td>
+                        <td class="py-2 px-4 border-b">${value}</td>
+                    </tr>
+                `;
+            }
         }
 
         // Close table tags

@@ -37,6 +37,7 @@ form.addEventListener('submit', async (event) => {
             errorDiv.style.display = 'none';
             errorDiv.textContent = '';
             document.getElementById("estadisticasLink").classList.remove('disabled');
+            document.getElementById("upload-excel").classList.remove('boton-disabled');
             sessionStorage.setItem('estadisticasEnabled', 'true');
             usarIA.style.display = 'block';
             atrCalc.style.display = 'none';
@@ -48,6 +49,7 @@ form.addEventListener('submit', async (event) => {
             resultDiv.textContent = '';
             usarIA.style.display = 'none';
             document.getElementById("estadisticasLink").classList.add("disabled");
+            document.getElementById("upload-excel").classList.add('boton-disabled');
             sessionStorage.removeItem('estadisticasEnabled');
             atrCalc.style.display = 'none';
             atrCarg.style.display = 'none';
@@ -61,7 +63,45 @@ form.addEventListener('submit', async (event) => {
         resultDiv.textContent = '';
         usarIA.style.display = 'none';
         document.getElementById("estadisticasLink").classList.add("disabled");
+        document.getElementById("upload-excel").classList.add('boton-disabled');
         sessionStorage.removeItem('estadisticasEnabled');
+    }
+});
+
+const form2 = document.getElementById('upload-form2');
+form2.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const formData = new FormData(form2);
+    const resultDiv = document.getElementById('result2');
+    const errorDiv = document.getElementById('error');
+
+    document.getElementById('atrib-calc').style.display = 'none';
+
+    try {
+        // Realizar la solicitud a la API
+        const response = await fetch('/api/upload-excel', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (response.ok) {
+            resultDiv.textContent = 'Archivo cargado exitosamente.';
+            errorDiv.style.display = 'none';
+            errorDiv.textContent = '';
+        } else {
+            const error = await response.json();
+            errorDiv.textContent = `Error: ${error.detail}`;
+            errorDiv.style.display = 'block';
+            resultDiv.textContent = '';
+        }
+
+    } catch (error) {
+        // Manejar cualquier error que ocurra durante la solicitud
+        console.error("Error:", error);
+        errorDiv.textContent = 'Ha ocurrido un error en la comunicación con el servidor.';
+        errorDiv.style.display = 'block';
+        resultDiv.textContent = '';
     }
 });
 
@@ -213,10 +253,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (isEstadisticasEnabled === 'true' && !data.isEmpty) {
                 // Habilitar el enlace si está guardado en localStorage y la carpeta no está vacía
                 document.getElementById("estadisticasLink").classList.remove('disabled');
+                document.getElementById("upload-excel").classList.remove('boton-disabled');
                 document.getElementById("usar-IA").style.display = 'block';
             } else {
                 // Deshabilitar el enlace si la carpeta está vacía
                 document.getElementById("estadisticasLink").classList.add('disabled');
+                document.getElementById("upload-excel").classList.add('boton-disabled');
                 document.getElementById("usar-IA").style.display = 'none';
             }
         })

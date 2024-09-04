@@ -37,7 +37,10 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.neighbors import KNeighborsRegressor
+from sklearn.neural_network import MLPRegressor
 from sklearn.metrics import mean_squared_error
+
+from xgboost import XGBRegressor
 
 # Configurar el logging
 logging.basicConfig(level=logging.INFO)
@@ -48,6 +51,7 @@ DB_EMBEDDINGS = "data/embeddings.db"
 DB_SETTINGS = "data/settings.db"
 
 UPLOAD_DIR = Path("data/extracted_files")
+UPLOAD_EXCEL = Path("data/excel")
 RESULTS_DIR = Path("data/results")
 
 # Initialize FastAPI app
@@ -82,6 +86,10 @@ async def startup_event():
         shutil.rmtree(UPLOAD_DIR)
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+    if UPLOAD_EXCEL.exists():
+        shutil.rmtree(UPLOAD_EXCEL)
+    UPLOAD_EXCEL.mkdir(parents=True, exist_ok=True)
+
 @api_app.post("/upload-zip")
 async def upload_zip(file: UploadFile = File(...)):
     global hayResultados
@@ -94,6 +102,11 @@ async def upload_zip(file: UploadFile = File(...)):
     if UPLOAD_DIR.exists():
         shutil.rmtree(UPLOAD_DIR)
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Eliminar el contenido existente en la carpeta que contiene el excel de notas
+    if UPLOAD_EXCEL.exists():
+        shutil.rmtree(UPLOAD_EXCEL)
+    UPLOAD_EXCEL.mkdir(parents=True, exist_ok=True)
 
     # Guardar el archivo zip temporalmente
     temp_zip_path = UPLOAD_DIR / file.filename
@@ -108,19 +121,36 @@ async def upload_zip(file: UploadFile = File(...)):
     # Eliminar el archivo zip temporal
     temp_zip_path.unlink()
 
+    return {"detail": "Archivo cargado y extraído exitosamente"}
+
+@api_app.post("/upload-excel")
+async def upload_excel(file: UploadFile = File(...)):
+    # Eliminar el contenido existente en la carpeta de destino
+    if UPLOAD_EXCEL.exists():
+        shutil.rmtree(UPLOAD_EXCEL)
+    UPLOAD_EXCEL.mkdir(parents=True, exist_ok=True)
+
+    # Guardar el archivo zip temporalmente
+    excel_path = UPLOAD_EXCEL / file.filename
+
+    with open(excel_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
     # Verificar que exista un archivo .xlsx en el directorio
-    xlsx_files = list(UPLOAD_DIR.glob("*.xlsx"))
+    xlsx_files = list(UPLOAD_EXCEL.glob("*.xlsx"))
     if not xlsx_files:
-        raise HTTPException(status_code=400, detail="No se encontró ningún archivo .xlsx en el zip. Consultar 'AYUDA'")
+        excel_path.unlink()
+        raise HTTPException(status_code=400, detail="Solo se permiten archivos .xlsx. Consultar 'AYUDA'")
 
     # Cargar el archivo Excel
-    excel_path = xlsx_files[0]  # Se asume que hay un solo archivo .xlsx
+    excel_path = xlsx_files[0]
     df = pd.read_excel(excel_path)
 
     # Filtrar columnas que puedan contener notas (suponiendo que estén marcadas con asteriscos)
     columnas_con_asteriscos = [col for col in df.columns if col.startswith('*') and col.endswith('*')]
 
     if not columnas_con_asteriscos:
+        excel_path.unlink()
         raise HTTPException(status_code=400, detail="No se encontró ninguna columna con notas (marcada con asteriscos) en el archivo .xlsx. Consultar 'AYUDA'")
 
     # Verificar que las celdas en las columnas de notas no estén en blanco si la celda correspondiente en 'JSON' no está en blanco
@@ -130,10 +160,12 @@ async def upload_zip(file: UploadFile = File(...)):
 
         for i in range(len(df)):
             if pd.notna(json_column.iloc[i]) and pd.isna(notas_column.iloc[i]):
+                excel_path.unlink()
                 raise HTTPException(status_code=400, detail=f"La columna {col} tiene notas en blanco pertenecientes a un JSON. Consultar 'AYUDA'")
 
     # Verificar los nombres de los archivos JSON necesarios
     if 'JSON' not in df.columns:
+        excel_path.unlink()
         raise HTTPException(status_code=400, detail="No se encontró una columna llamada 'JSON' en el archivo .xlsx. Consultar 'AYUDA'")
 
     json_column = df['JSON']
@@ -142,6 +174,7 @@ async def upload_zip(file: UploadFile = File(...)):
     for json_name in json_names:
         json_path = UPLOAD_DIR / json_name
         if not json_path.exists():
+            excel_path.unlink()
             raise HTTPException(status_code=400, detail=f"El archivo JSON {json_name} no se encontró en el zip. Consultar 'AYUDA'")
 
     return {"detail": "Archivo cargado y extraído exitosamente"}
@@ -284,7 +317,11 @@ def get_statistics():
 
 @api_app.get("/notes")
 def get_notes():
-    xlsx_files = list(UPLOAD_DIR.glob("*.xlsx"))
+    xlsx_files = list(UPLOAD_EXCEL.glob("*.xlsx"))
+    if not xlsx_files:
+        print("El archivo no existe en la ruta especificada.")
+        return None
+
     archivo_excel = xlsx_files[0]
     
     if not os.path.exists(archivo_excel):
@@ -414,7 +451,7 @@ def generar_datos():
     dispersion_promedio = []
     notass = []
     
-    xlsx_files = list(UPLOAD_DIR.glob("*.xlsx"))
+    xlsx_files = list(UPLOAD_EXCEL.glob("*.xlsx"))
     archivo_excel = xlsx_files[0]
     if not os.path.exists(archivo_excel):
         print("El archivo no existe en la ruta especificada.")
@@ -645,6 +682,28 @@ def entrenar(datos: EntrenamientoRequest):
         tree_accuracy = np.sqrt(tree_mse)  # Usar RMSE como métrica (Raíz del Error Cuadrático Medio)
         accuracy = tree_accuracy
         print("RMSE del árbol de decisión:", tree_accuracy)
+
+
+    if datos.metodo == 'Algoritmo XGBoost':
+        # Entrenar un XGBoost (regresión)
+        xgboost = XGBRegressor(random_state=42)
+        xgboost.fit(X_train, y_train)
+        xgboost_pred = xgboost.predict(X_test)
+        xgboost_mse = mean_squared_error(y_test, xgboost_pred)
+        xgboost_accuracy = np.sqrt(xgboost_mse)  # Usar RMSE como métrica (Raíz del Error Cuadrático Medio)
+        accuracy = xgboost_accuracy
+        print("RMSE del XGBoost:", xgboost_accuracy)
+
+
+    if datos.metodo == 'Red neuronal MLP':
+        # Entrenar una red neuronal MLP (regresión)     hidden_layer_sizes=(100, 100): Define dos capas ocultas con 100 neuronas cada una.
+        mlp = MLPRegressor(hidden_layer_sizes=(100, 100), max_iter=1000, random_state=42)
+        mlp.fit(X_train, y_train)
+        mlp_pred = mlp.predict(X_test)
+        mlp_mse = mean_squared_error(y_test, mlp_pred)
+        mlp_accuracy = np.sqrt(mlp_mse)  # Usar RMSE como métrica
+        accuracy = mlp_accuracy
+        print("RMSE de la red neuronal MLP:", mlp_accuracy)
     
             
     return {
@@ -740,6 +799,32 @@ def predecir(datos: PrediccionDatos):
         modelo_entrenado = tree
         print("RMSE del árbol de decisión:", tree_accuracy)
 
+
+    if datos.metodo == 'Algoritmo XGBoost':
+        # Entrenar un XGBoost (regresión)
+        xgboost = XGBRegressor(random_state=42)
+        xgboost.fit(X_train, y_train)
+        xgboost_pred = xgboost.predict(X_test)
+        xgboost_mse = mean_squared_error(y_test, xgboost_pred)
+        xgboost_accuracy = np.sqrt(xgboost_mse)  # Usar RMSE como métrica (Raíz del Error Cuadrático Medio)
+        accuracy = xgboost_accuracy
+        modelo_entrenado = xgboost
+        print("RMSE del XGBoost:", xgboost_accuracy)
+
+
+    if datos.metodo == 'Red neuronal MLP':
+        # Entrenar una red neuronal MLP (regresión)
+        mlp = MLPRegressor(hidden_layer_sizes=(100, 100), max_iter=1000, random_state=42)
+        mlp.fit(X_train, y_train)
+        mlp_pred = mlp.predict(X_test)
+        mlp_mse = mean_squared_error(y_test, mlp_pred)
+        mlp_accuracy = np.sqrt(mlp_mse)  # Usar RMSE como métrica
+        accuracy = mlp_accuracy
+        modelo_entrenado = mlp
+        print("RMSE de la red neuronal MLP:", mlp_accuracy)
+
+
+
     if 'modelo_entrenado' in locals():
         prediccion = modelo_entrenado.predict(valores_2d)
         print("Prediccion:", prediccion)
@@ -779,7 +864,7 @@ def analisisIA(asignatura: Asignatura):
         "No des explicaciones adicionales. Asegurate que el formato sea 'x, y', siendo x e y números"
 )
 
-    xlsx_files = list(UPLOAD_DIR.glob("*.xlsx"))
+    xlsx_files = list(UPLOAD_EXCEL.glob("*.xlsx"))
     archivo_excel = xlsx_files[0]
     if not os.path.exists(archivo_excel):
         print("El archivo no existe en la ruta especificada.")
@@ -887,7 +972,7 @@ async def upload_file(file: UploadFile = File(...)):
             elif current_key:
                 data_dict[current_key] += eval(line.strip())
         
-        xlsx_files = list(UPLOAD_DIR.glob("*.xlsx"))
+        xlsx_files = list(UPLOAD_EXCEL.glob("*.xlsx"))
         archivo_excel = xlsx_files[0]
         if not os.path.exists(archivo_excel):
             print("El archivo .xlsx no existe en la ruta especificada.")
