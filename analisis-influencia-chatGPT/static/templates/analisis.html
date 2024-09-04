@@ -1,0 +1,94 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <title>Análisis</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.15/dist/tailwind.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+</head>
+
+<body class="relative overflow-hidden">
+    <!-- Header -->
+    <div class="bg-black text-white p-4 flex items-center sticky top-0 z-10 header">
+        <div class="w-1/8">
+            <h1 class="text-1xl ml-4 flex-grow">
+                <a href="/" class="icon-group">
+                    <span class="material-symbols-outlined icons">home</span>
+                    INICIO
+                </a>
+            </h1>
+        </div>
+        <div class="w-1/8 items-center">
+            <h1 class="text-1xl ml-8 flex-grow">
+                <a href="#" class="icon-group" onclick="volverPaginaPrincipal()">
+                    <span class="material-symbols-outlined icons">bar_chart</span>
+                    ESTADÍSTICAS
+                </a>
+            </h1>
+        </div>
+        <div class="w-1/8 items-center">
+            <h1 class="text-1xl ml-8 flex-grow">
+                <a href="#" class="icon-group pagina-activa">
+                    <span class="material-symbols-outlined icons">analytics</span>
+                    ANÁLISIS DE CORRELACIÓN
+                </a>
+            </h1>
+        </div>
+        <div class="w-1/8 items-center">
+            <h1 class="text-1xl ml-8 flex-grow">
+                <a href="#" class="icon-group" onclick="pagina_entrenamiento()">
+                    <span class="material-symbols-outlined icons">network_node</span>
+                    PREDICCIÓN
+                </a>
+            </h1>
+        </div>
+    </div>
+    <!-- Análisis -->
+    <div class="p-4 mx-auto overflow-hidden" id="analisis">
+        <div class="margen-gris">
+            <div class="analisis-title" id="transicionC">
+                <h1 class="text-center text-xl">ANÁLISIS DE CORRELACIÓN</h1>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="chart-column" id="charts-container-1">
+                <h1 class="pt-5 pb-2 text-center text-xl">Promedio de Mensajes</h1>
+                <!-- <canvas id="correlationChart" width="800" height="400"></canvas> -->
+            </div>
+            <div class="chart-column" id="charts-container-2">
+                <h1 class="pt-5 pb-2 text-center text-xl">Longitud Promedio de Mensajes</h1>
+                <!-- Aquí puedes añadir el contenido de charts-container-2 -->
+            </div>
+            <div class="chart-column" id="charts-container-3">
+                <h1 class="pt-5 pb-2 text-center text-xl">Dispersión Promedio de Mensajes</h1>
+                <!-- Aquí puedes añadir el contenido de charts-container-3 -->
+            </div>
+        </div>
+        <div class="container2" id="container2" style="display: none;">
+            <h1 class="pt-5 pb-2 text-center text-xl">Atributos calculados por IA</h1>
+            <div class="atrib-container">
+                <div class="chart-column" id="charts-container-4">
+                    <h1 class="pt-5 pb-2 text-center text-xl">% Relacion con la asignatura</h1>
+                    <!-- <canvas id="correlationChart" width="800" height="400"></canvas> -->
+                </div>
+                <div class="chart-column" id="charts-container-5">
+                    <h1 class="pt-5 pb-2 text-center text-xl">% Conocimiento de la asignatura</h1>
+                    <!-- <canvas id="correlationChart" width="800" height="400"></canvas> -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <link href="/css/style.css" rel="stylesheet" />
+    <script src="/js/analisis.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.2.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            transicionCorrelacion();
+            analisis();
+        });
+    </script>
+</body>
+</html>
+

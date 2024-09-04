@@ -1,0 +1,2 @@
+json: ["70 Nombre Apellido1 Apellido2.json","71 Nombre Apellido1 Apellido2.json","72 Nombre Apellido1 Apellido2.json","73 Nombre Apellido1 Apellido2.json","74 Nombre Apellido1 Apellido2.json","75 Nombre Apellido1 Apellido2.json","76 Nombre Apellido1 Apellido2.json","77 Nombre Apellido1 Apellido2.json"]
+IA: ["85, 70","90, 75","85, 75","85, 75","85, 70","85, 75","85, 70","85, 75"]

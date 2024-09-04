@@ -1,0 +1,240 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.15/dist/tailwind.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+</head> 
+
+<body class="relative overflow-hidden">
+    <!-- Header -->
+    <div class="bg-black text-white p-4 flex items-center sticky top-0 z-10 header">
+        <div class="w-1/8 items-center">
+            <h1 class="text-1xl ml-4 flex-grow">
+                <a href="/" class="icon-group pagina-activa" id="inicio-link">
+                    <span class="material-symbols-outlined icons">home</span>
+                    INICIO
+                </a>
+            </h1>
+        </div>
+        <div class="w-1/8 items-center">
+            <h1 class="text-1xl ml-8 flex-grow">
+                <a href="#" id="estadisticasLink" class="icon-group disabled" onclick="pagina_conversaciones()">
+                    <span class="material-symbols-outlined icons">bar_chart</span>
+                    ESTADÍSTICAS
+                </a>
+            </h1>
+        </div>
+        <div class="w-1/8 items-center">
+            <h1 class="text-1xl ml-8 flex-grow">
+                <a href="#" class="icon-group" id="ayuda-link" onclick="ayuda()">
+                    <span class="material-symbols-outlined icons">help</span>
+                    AYUDA
+                </a>
+            </h1>
+        </div>
+    </div>
+    
+    <div class="p-4 mx-auto overflow-hidden" id="index">
+        <div class="title">
+            <h1>Análisis de la Influencia del Uso de Chat GPT en el Rendimiento Académico de los Estudiantes</h1>
+        </div>
+        <div class="p-4" id="seleccionar_archivos">
+            <h1>Cargar un archivo ZIP</h1>
+            <form id="upload-form">
+                <input name="file" type="file" accept=".zip">
+                <button type="submit" class="p-2 bg-black text-white text-1xl rounded w-1/6 icon-group">
+                    <span class="material-symbols-outlined p-1 icons">upload</span>
+                </button>
+            </form>
+
+            <div id="result"></div>
+            <div id="error"></div>
+        </div>
+
+        <div class="IA" id="usar-IA">
+            <div class="w-full flex justify-end">
+                <button class="text-black icon-group" onclick="infoIA()">
+                    <span class="material-symbols-outlined p-1 icons">info</span>
+                </button>
+            </div>
+            <h1>Calcular atributos (% relacion y % conocimiento sobre la asignatura)</h1>
+            <p>Esto podría llevar varios minutos (≈30s/json)</p>
+            <div class="mb-4 w-full">
+                <input type="text" id="input-asignatura" placeholder="Asignatura" class="p-2 border rounded w-5/6" />
+            </div>
+            <div id="loading-indicator" style="display: none;">
+                <center><img src="/load.gif" alt="Cargando..." /></center>
+                <p>Este proceso puede durar varios minutos, por favor no haga nada hasta que termine el proceso.</p>
+            </div>
+            <div id="atrib-calc" style="display: none;">
+                <p>Atributos calculados correctamente</p>
+            </div>
+            <div id="atrib-carg" style="display: none;">
+                <p>Atributos cargados correctamente</p>
+            </div>
+            <button class="p-2 bg-black text-white text-1xl icon-group" onclick="analisisIA()">
+                <span class="material-symbols-outlined p-1 icons">add_circle</span>
+            </button>
+            <input type="file" id="fileInput" style="display:none;" accept=".txt">
+            <button class="p-2 bg-black text-white text-1xl icon-group" onclick="document.getElementById('fileInput').click()">
+                <span class="material-symbols-outlined p-1 icons">upload</span>
+            </button>
+            <button class="p-2 bg-black text-white text-1xl icon-group" onclick="guardarResultados()">
+                <span class="material-symbols-outlined p-1 icons">download</span>
+            </button>
+        </div>
+
+        <div class="guide-container" id="help">
+            <h1>Guía para crear y subir el archivo ZIP correctamente</h1>
+            <p>Esta guía te ayudará a crear un archivo ZIP que contiene los datos necesarios para que la aplicación web funcione correctamente. Sigue los pasos a continuación:</p>
+
+            <h2>1. Obtener los archivos JSON</h2>
+            <ul>
+                <li><strong>Los alumnos debe descargar sus conversaciones con ChatGPT</strong>.</li>
+                <li><strong>Obtendrán un archivo .zip</strong>. Deben descomprimirlo y buscar el archivo llamado <code>conversations.json</code>.</li>
+                <li><strong>Cada alumno debe enviarle el archivo </strong><code>conversations.json</code>.</li>
+                <li>Es recomendable que el alumno cambie el nombre del archivo por <code>Nombre Apellido1 Apellido2.json</code>.</li>
+            </ul>
+
+            <h2>2. Preparar los archivos JSON</h2>
+            <ul>
+                <li><strong>Cada alumno debe tener un archivo JSON</strong> que contenga sus conversaciones.</li>
+                <li><strong>El nombre del archivo JSON es recomendable que sea el nombre del alumno</strong>. Por ejemplo, si el nombre del alumno es "Juan Pérez", el archivo puede llamarse <code>Juan Pérez.json</code>.</li>
+                <li>Asegúrate de que cada archivo JSON esté completo y bien estructurado.</li>
+                <li class="important">Importante: No puede haber coincidencias en los nombres de los archivos.</li>
+            </ul>
+
+            <h2>3. Crear el archivo Excel</h2>
+            <ol>
+                <li><strong>Abre Excel</strong> o cualquier editor de hojas de cálculo de tu preferencia.</li>
+                <li><strong>Crea una nueva hoja de cálculo</strong> y asegúrate de que la primera fila contenga los nombres de las columnas.</li>
+            </ol>
+
+            <h3>3.1 Columnas necesarias en el Excel</h3>
+            <ul>
+                <li>
+                    <strong>Columna "JSON"</strong>: Esta columna debe contener los nombres de los archivos JSON de cada alumno. Ejemplo:
+                    <ul>
+                        <li>Fila 2: <code>Juan Pérez.json</code></li>
+                        <li>Fila 3: <code>María García.json</code></li>
+                    </ul>
+                </li>
+                <li>
+                    <strong>Columna(s) de notas</strong>:
+                    <ul>
+                        <li>Puedes tener una o más columnas de notas con los nombres de las evaluaciones, por ejemplo, <code>Nota Teoría</code>, <code>Nota Práctica</code>, etc.</li>
+                        <li class="important">Importante: Las columnas de notas que desees que la aplicación lea deben estar entre asteriscos. Ejemplo: <code>*Nota Teoría*</code>.</li>
+                    </ul>
+                </li>
+                <li><strong>Ejemplo de estructura</strong>:</li>
+            </ul>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>JSON</th>
+                        <th>*Nota Teoría*</th>
+                        <th>*Nota Práctica*</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Juan Pérez.json</td>
+                        <td>8.5</td>
+                        <td>9</td>
+                    </tr>
+                    <tr>
+                        <td>María García.json</td>
+                        <td>7.5</td>
+                        <td>8.8</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>3.2 Completa los datos en el Excel</h3>
+            <ul>
+                <li><strong>Rellena las filas</strong> con los nombres de los archivos JSON y sus correspondientes notas.</li>
+                <li><strong>Guarda el archivo Excel</strong>. Puedes guardarlo como <code>notas.xlsx</code>.</li>
+            </ul>
+
+            <h2>4. Empaquetar los archivos en un ZIP</h2>
+            <ul>
+                <li><strong>Selecciona todos los archivos JSON</strong> y el archivo Excel (<code>notas.xlsx</code>).</li>
+                <li>
+                    <strong>Crea un archivo ZIP</strong> con estos archivos. Puedes nombrarlo como <code>datos_alumnos.zip</code>.
+                    <ul>
+                        <li>En la mayoría de sistemas, puedes hacer clic derecho en los archivos seleccionados y elegir la opción "Enviar a" &gt; "Carpeta comprimida (zip)".</li>
+                    </ul>
+                </li>
+                <li class="important">
+                    <strong>Asegúrate de que los archivos se descompriman directamente</strong> y no dentro de una carpeta adicional. Para esto:
+                    <ul>
+                        <li>Al crear el ZIP, selecciona solo los archivos y no la carpeta que los contiene.</li>
+                        <li>Si al descomprimir el ZIP ves que se genera una carpeta adicional, revisa los pasos de empaquetado y asegúrate de que los archivos seleccionados no estén dentro de una carpeta.</li>
+                    </ul>
+                </li>
+            </ul>
+
+            <h2>5. Subir el ZIP a la aplicación web</h2>
+            <ul>
+                <li><strong>Selecciona el archivo ZIP</strong> que acabas de crear (<code>datos_alumnos.zip</code>) y súbelo.</li>
+                <li><strong>Verifica que el archivo se haya subido correctamente</strong> y ya podrás usar la aplicación correctamente.</li>
+            </ul>
+
+            <h2>Consideraciones finales</h2>
+            <ul>
+                <li><strong>Verifica los nombres de los archivos</strong> y columnas para asegurarte de que coincidan exactamente con lo requerido.</li>
+                <li><strong>Asegúrate de que las notas que deseas analizar</strong> estén en columnas marcadas con asteriscos, de lo contrario, la aplicación no las leerá.</li>
+                <li><strong>Revisa el contenido</strong> del archivo ZIP antes de subirlo para evitar errores en la aplicación.</li>
+            </ul>
+
+            <p>Siguiendo estos pasos, deberías poder crear y subir el archivo ZIP sin problemas. ¡Buena suerte!<br><br></p>
+
+
+            <h1>Cálculo de atributos</h1>
+            <p>Una vez cargadas las conversaciones correctamente se activará esta opción</p>
+
+            <h2>1. Calcular el % de relación y % de conocimiento sobre la asignatura</h2>
+            <ul>
+                <li>Primero, <strong>introduce el nombre de la asignatura en el campo correspondiente</strong>. Una vez hecho esto, presiona el icono <span class="material-symbols-outlined p-1 icons">add_circle</span>. Este proceso usa la API de ChatGPT y tarda aproximadamente 30 segundos por cada archivo JSON que lee.</li>
+                <li class="important">Importante: No hagas nada durante este proceso.</li>
+                <li class="important">Ésta práctica consume un total de $0.150 / 1M input tokens. No abusar de ella.</li>
+            </ul>
+
+            <h2>2. Carga de atributos desde un archivo</h2>
+            <ul>
+                <li>Tienes la opción de cargar un archivo TXT que contenga los atributos predefinidos. Para ello, haz clic en el icono <span class="material-symbols-outlined p-1 icons">upload</span>. El archivo debe tener el siguiente formato:</li>
+                <li>
+                    <ul>
+                        <li><code><strong>JSON:</strong> ["1 Nombre Apellido1 Apellido2.json", "2 Nombre Apellido1 Apellido2.json", ...]</code></li>
+                        <li><code><strong>IA:</strong> ["80, 70", "80, 60", ...]</code></li>
+                    </ul>
+                </li>
+                <li>En este formato, el primer número representa el porcentaje de relación de las conversaciones con la asignatura, y el segundo número indica el nivel de conocimiento de la asignatura.</li>
+            </ul>
+
+            <h2>3. Descarga de atributos</h2>
+            <ul>
+                <li>Una vez que los atributos han sido calculados o cargados, puedes descargarlos en un archivo TXT haciendo clic en el icono de descarga <span class="material-symbols-outlined p-1 icons">download</span>.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Modal información IA -->
+    <div id="infoModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-1/3 relative">
+            <div class="w-full flex justify-end">
+                <button class="text-black icon-group" onclick="infoIA()">
+                    <span class="material-symbols-outlined p-1 icons">close</span>
+                </button>
+            </div>
+            <h2 class="text-2xl font-bold mb-4 -mt-4">Información</h2>
+            <p>Este proceso usa chatGPT para obtener estos resultados. Se esta usando la versión gpt-4o-mini-2024-07-18, que permite 60.000 tokens de entrada y 3 request por minuto.</p>
+        </div>
+    </div>
+
+    <link href="/css/style.css" rel="stylesheet" />
+    <script src="/js/script.js"></script>
+</body>
+</html>
