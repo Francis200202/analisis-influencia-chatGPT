@@ -1,5 +1,5 @@
 ﻿//Volver atras
-function volverPaginaAnalisis() {
+function pagina_correlacion() {
     window.location.href = '/templates/analisis.html';
 }
 

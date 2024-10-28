@@ -9,7 +9,7 @@
 
 <body class="relative overflow-hidden">
     <!-- Header -->
-    <div class="bg-black text-white p-4 flex items-center sticky top-0 z-10 header">
+    <div class="bg-black text-white p-4 flex items-center sticky top-0 z-20 header">
         <div class="w-1/8">
             <h1 class="text-1xl ml-4 flex-grow">
                 <a href="/" class="icon-group">
@@ -18,19 +18,41 @@
                 </a>
             </h1>
         </div>
-        <div class="w-1/8 items-center">
+        <div class="w-1/8 items-center relative group z-50">
             <h1 class="text-1xl ml-8 flex-grow">
-                <a href="#" class="icon-group pagina-activa">
-                    <span class="material-symbols-outlined icons">bar_chart</span>
-                    ESTADÍSTICAS
+                <a href="#" class="icon-group pagina-activa" id="inicio-link">
+                    <span class="material-symbols-outlined icons">analytics</span>
+                    ANÁLISIS
+                    <span class="material-symbols-outlined icon">stat_minus_1</span>
                 </a>
             </h1>
+            <!-- Dropdown Content -->
+            <div class="dropdown-content hidden absolute bg-black mt-2 w-44 z-50 rounded-md shadow-lg group-hover:block">
+                <h1 class="text-1xl px-4 py-2 flex-grow">
+                    <a href="#" id="estadisticasLink" class="icon-group pagina-activa">
+                        <span class="material-symbols-outlined icons">bar_chart</span>
+                        ESTADÍSTICAS
+                    </a>
+                </h1>
+                <h1 class="text-1xl px-4 py-2 flex-grow">
+                    <a href="#" id="correlacionLink" class="icon-group" onclick="pagina_correlacion()">
+                        <span class="material-symbols-outlined icons">grain</span>
+                        CORRELACIÓN
+                    </a>
+                </h1>
+                <h1 class="text-1xl px-4 py-2 flex-grow">
+                    <a href="#" id="prediccionLink" class="icon-group" onclick="pagina_prediccion()">
+                        <span class="material-symbols-outlined icons">network_node</span>
+                        PREDICCIÓN
+                    </a>
+                </h1>
+            </div>
         </div>
         <div class="w-1/8 items-center">
             <h1 class="text-1xl ml-8 flex-grow">
-                <a href="#" class="icon-group" onclick="pagina_analisis()">
-                    <span class="material-symbols-outlined icons">analytics</span>
-                    ANÁLISIS DE CORRELACIÓN
+                <a href="#" class="icon-group" id="ayuda-link" onclick="ayuda()">
+                    <span class="material-symbols-outlined icons">help</span>
+                    AYUDA
                 </a>
             </h1>
         </div>
@@ -41,12 +63,12 @@
     </div>
 
     <!-- Main content -->
-    <div class="flex h-screen" style="height: calc(100vh - 64px);">
+    <div class="flex h-screen z-10" style="height: calc(100vh - 64px);">
         <!-- Sidebar -->
         <div class="w-1/3 p-2 bg-gray-200 overflow-y-auto" id="sidebar">
 
             <!-- Conversations dropdown menu -->
-            <div class="sticky top-0 z-10 bg-gray-200 mt-0">
+            <div class="sticky top-0 bg-gray-200 mt-0 z-10">
                 <div class="flex justify-between items-center mb-0">
                     <div class="p-2 w-full">
                         <select class="mt-1 p-2 w-full rounded-md" id="jsonSelect" onchange="handleConversationSelect()">
@@ -58,7 +80,7 @@
             </div>
 
             <!-- Sticky filter section -->
-            <div class="sticky z-10 bg-gray-200 mt-0" style="top: 59px;">
+            <div class="sticky bg-gray-200 mt-0 z-10" style="top: 59px;">
                 <div class="flex justify-between items-center mb-4">
                     <div class="p-2 w-full">
                         <select class="mt-1 p-2 w-full rounded-md" id="groupFilter">

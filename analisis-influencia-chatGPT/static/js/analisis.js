@@ -1,6 +1,11 @@
-//Volver atras
-function volverPaginaPrincipal() {
+//Pagina estadisticas
+function pagina_estadisticas() {
     window.location.href = '/templates/conversaciones.html';
+}
+
+//Pagina prediccion
+function pagina_prediccion() {
+    window.location.href = '/templates/entrenamiento.html';
 }
 
 function transicionCorrelacion() {
@@ -373,9 +378,4 @@ async function analisis() {
 
     })
     .catch(error => console.error('Error al generar las gráficas:', error));
-}
-
-//Pagina Entrenamiento
-function pagina_entrenamiento() {
-    window.location.href = '/templates/entrenamiento.html';
 }

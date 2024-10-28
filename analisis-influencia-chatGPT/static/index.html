@@ -17,13 +17,35 @@
                 </a>
             </h1>
         </div>
-        <div class="w-1/8 items-center">
+        <div class="w-1/8 items-center relative group">
             <h1 class="text-1xl ml-8 flex-grow">
-                <a href="#" id="estadisticasLink" class="icon-group disabled" onclick="pagina_conversaciones()">
-                    <span class="material-symbols-outlined icons">bar_chart</span>
-                    ESTADÍSTICAS
+                <a href="#" class="icon-group" id="inicio-link">
+                    <span class="material-symbols-outlined icons">analytics</span>
+                    ANÁLISIS
+                    <span class="material-symbols-outlined icon">stat_minus_1</span>
                 </a>
             </h1>
+            <!-- Dropdown Content -->
+            <div class="dropdown-content hidden absolute bg-black mt-2 w-44 rounded-md shadow-lg group-hover:block">
+                <h1 class="text-1xl px-4 py-2 flex-grow">
+                    <a href="#" id="estadisticasLink" class="icon-group disabled" onclick="pagina_estadisticas()">
+                        <span class="material-symbols-outlined icons">bar_chart</span>
+                        ESTADÍSTICAS
+                    </a>
+                </h1>
+                <h1 class="text-1xl px-4 py-2 flex-grow">
+                    <a href="#" id="correlacionLink" class="icon-group" onclick="pagina_correlacion()">
+                        <span class="material-symbols-outlined icons">grain</span>
+                        CORRELACIÓN
+                    </a>
+                </h1>
+                <h1 class="text-1xl px-4 py-2 flex-grow">
+                    <a href="#" id="prediccionLink" class="icon-group" onclick="pagina_prediccion()">
+                        <span class="material-symbols-outlined icons">network_node</span>
+                        PREDICCIÓN
+                    </a>
+                </h1>
+            </div>
         </div>
         <div class="w-1/8 items-center">
             <h1 class="text-1xl ml-8 flex-grow">

@@ -1,5 +1,15 @@
 let conversationData = null;
 
+//Pagina correlacion
+function pagina_correlacion() {
+    window.location.href = '/templates/analisis.html';
+}
+
+//Pagina prediccion
+function pagina_prediccion() {
+    window.location.href = '/templates/entrenamiento.html';
+}
+
 function handleConversationSelect() {
     const selectedFilePath = document.getElementById("jsonSelect").value;
     if (selectedFilePath) {
@@ -426,13 +436,19 @@ function handleSearchInput(event) {
         searchConversations(query);
 }
 
-//Pagina Analisis
-function pagina_analisis() {
-    window.location.href = '/templates/analisis.html';
-}
-
 window.addEventListener('DOMContentLoaded', (event) => {
-    //Deberia poner solo la funcion para seleccionar el json y cuando se seleccione el json llamar a estas tres funciones
+    let isCorrPredEnabled = sessionStorage.getItem('corrPredEnabled');
+
+    if (isCorrPredEnabled === 'true') {
+        // Habilitar el enlace si está guardado en localStorage
+        document.getElementById("correlacionLink").classList.remove('disabled');
+        document.getElementById("prediccionLink").classList.remove('disabled');
+    } else {
+        // Deshabilitar el enlace
+        document.getElementById("correlacionLink").classList.add('disabled');
+        document.getElementById("prediccionLink").classList.add('disabled');
+    }
+
     loadJsonFiles();
 
     document.getElementById("search-input").addEventListener("keydown", handleSearchInput);

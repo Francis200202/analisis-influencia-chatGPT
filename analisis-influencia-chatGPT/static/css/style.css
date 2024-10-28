@@ -2,6 +2,20 @@
     height: 70px;
 }
 
+/* Ocultar el menú desplegable por defecto */
+.dropdown-content.hidden {
+    display: none;
+}
+
+/* Mostrar el desplegable cuando se pasa el mouse por encima del contenedor */
+.group:hover .dropdown-content.hidden {
+    display: block;
+}
+
+.group:hover .dropdown-content {
+    margin-top: 0;
+}
+
 .pagina-activa {
     color: #abebc6;
 }
@@ -227,7 +241,7 @@
     color: #bbb;
     font-size: 12px;
     position: absolute;
-    z-index: 99999;
+    z-index: 40;
     text-align: center;
     border-radius: 3px;
 }
@@ -260,6 +274,11 @@
     transition: transform 0.3s ease, color 0.3s ease;
 }
 
+.icon {
+    font-variation-settings: 'FILL' 1;
+    vertical-align: sub;
+}
+
 #activity-graph {
     font-size: small;
 }
@@ -288,7 +307,6 @@
     padding: 15px;
     position: sticky;
     top: -5px;
-    z-index: 10;
     max-width: 95%;
     border-radius: 0 0 20px 20px;
     margin: 0 auto;

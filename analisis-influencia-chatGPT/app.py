@@ -123,6 +123,72 @@ async def upload_zip(file: UploadFile = File(...)):
 
     return {"detail": "Archivo cargado y extraído exitosamente"}
 
+def extract_nested_zip(file_path, extract_to):
+    # Función que extrae archivos .zip anidados en carpetas
+    with zipfile.ZipFile(file_path, 'r') as zip_ref:
+        zip_ref.extractall(extract_to)
+
+def search_conversations_json(directory, destination_folder):
+    # Función que busca y extrae archivos conversations.json en directorios y archivos comprimidos anidados.
+    for root, dirs, files in os.walk(directory):
+        # Revisar todos los archivos en el directorio actual
+        for file in files:
+            file_path = os.path.join(root, file)
+            
+            # Si encontramos un archivo conversations.json, lo copiamos a extracted_files con el nombre de la carpeta
+            if file == 'conversations.json':
+                folder_name = os.path.basename(root)
+                dest_file_path = os.path.join(destination_folder, f"{folder_name}.json")
+                shutil.copy(file_path, dest_file_path)
+                print(f"Archivo encontrado y copiado en: {dest_file_path}")
+            
+            # Si encontramos un archivo .zip, lo extraemos y seguimos buscando
+            elif file.endswith('.zip'):
+                nested_extract_path = os.path.join(root, file.replace('.zip', ''))
+                os.makedirs(nested_extract_path, exist_ok=True)
+                extract_nested_zip(file_path, nested_extract_path)
+                # Llamada recursiva para buscar en el nuevo directorio extraído
+                search_conversations_json(nested_extract_path, destination_folder)
+
+@api_app.post("/upload-zip2")
+async def upload_zip2(file: UploadFile = File(...)):
+    global hayResultados
+    hayResultados = 0
+
+    if not file.filename.endswith(".zip"):
+        raise HTTPException(status_code=400, detail="Sólo se permiten archivos zip. Consultar 'AYUDA'")
+    
+    # Eliminar el contenido existente en la carpeta de destino
+    if UPLOAD_DIR.exists():
+        shutil.rmtree(UPLOAD_DIR)
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Eliminar el contenido existente en la carpeta que contiene el excel de notas
+    if UPLOAD_EXCEL.exists():
+        shutil.rmtree(UPLOAD_EXCEL)
+    UPLOAD_EXCEL.mkdir(parents=True, exist_ok=True)
+
+    # Guardar el archivo zip cargado temporalmente
+    temp_zip_path = UPLOAD_DIR / file.filename
+    with open(temp_zip_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # Extraer y procesar el archivo zip
+    temp_extract_folder = UPLOAD_DIR / "temp_extracted"
+    os.makedirs(temp_extract_folder, exist_ok=True)
+    extract_nested_zip(temp_zip_path, temp_extract_folder)
+    search_conversations_json(temp_extract_folder, UPLOAD_DIR)
+
+    # Limpiar carpeta temporal y archivo temporal
+    shutil.rmtree(temp_extract_folder)
+    temp_zip_path.unlink()
+
+    is_upload_dir_empty = not os.listdir(UPLOAD_DIR)
+
+    return {
+        "isUploadDirEmpty": is_upload_dir_empty
+    }
+
 @api_app.post("/upload-excel")
 async def upload_excel(file: UploadFile = File(...)):
     # Eliminar el contenido existente en la carpeta de destino
@@ -153,37 +219,43 @@ async def upload_excel(file: UploadFile = File(...)):
         excel_path.unlink()
         raise HTTPException(status_code=400, detail="No se encontró ninguna columna con notas (marcada con asteriscos) en el archivo .xlsx. Consultar 'AYUDA'")
 
-    # Verificar que las celdas en las columnas de notas no estén en blanco si la celda correspondiente en 'JSON' no está en blanco
+    # Verificar que las celdas en las columnas de notas no estén en blanco si la celda correspondiente en 'FILENAME' no está en blanco
     for col in columnas_con_asteriscos:
         notas_column = df[col]
-        json_column = df['JSON']
+        json_column = df['FILENAME']
 
         for i in range(len(df)):
             if pd.notna(json_column.iloc[i]) and pd.isna(notas_column.iloc[i]):
                 excel_path.unlink()
-                raise HTTPException(status_code=400, detail=f"La columna {col} tiene notas en blanco pertenecientes a un JSON. Consultar 'AYUDA'")
+                raise HTTPException(status_code=400, detail=f"La columna {col} tiene notas en blanco pertenecientes a un alumno. Consultar 'AYUDA'")
 
     # Verificar los nombres de los archivos JSON necesarios
-    if 'JSON' not in df.columns:
+    if 'FILENAME' not in df.columns:
         excel_path.unlink()
-        raise HTTPException(status_code=400, detail="No se encontró una columna llamada 'JSON' en el archivo .xlsx. Consultar 'AYUDA'")
+        raise HTTPException(status_code=400, detail="No se encontró una columna llamada 'FILENAME' en el archivo .xlsx. Consultar 'AYUDA'")
 
-    json_column = df['JSON']
+    json_column = df['FILENAME']
     json_names = json_column.dropna().tolist()
 
     for json_name in json_names:
-        json_path = UPLOAD_DIR / json_name
+        json_path = UPLOAD_DIR / (json_name + '.json')
         if not json_path.exists():
             excel_path.unlink()
-            raise HTTPException(status_code=400, detail=f"El archivo JSON {json_name} no se encontró en el zip. Consultar 'AYUDA'")
+            raise HTTPException(status_code=400, detail=f"El archivo JSON, perteneciente a {json_name}, no se encontró. Consultar 'AYUDA'")
 
     return {"detail": "Archivo cargado y extraído exitosamente"}
 
 @api_app.get("/check-folder-empty")
 def check_folder_empty():
-    if not os.listdir(UPLOAD_DIR):  # Verifica si la carpeta está vacía
-        return {"isEmpty": True}
-    return {"isEmpty": False}
+    # Verifica si ambas carpetas están vacías
+    is_upload_dir_empty = not os.listdir(UPLOAD_DIR)
+    is_upload_excel_empty = not os.listdir(UPLOAD_EXCEL)
+
+    # Retorna el estado de ambas carpetas
+    return {
+        "isUploadDirEmpty": is_upload_dir_empty,
+        "isUploadExcelEmpty": is_upload_excel_empty
+    }
 
 # Obtener lista de archivos JSON, es decir, las conversaciones de los alumnos
 @api_app.get("/json-files")
@@ -332,13 +404,14 @@ def get_notes():
         df = pd.read_excel(archivo_excel)
         print("Archivo leído correctamente.")
     
-    # Buscar el índice del JSON seleccionado en la columna 'JSON'
-    json_column = df['JSON']
+    # Buscar el índice del JSON seleccionado en la columna 'FILENAME'
+    json_column = df['FILENAME']
     
     try:
-        selected_index = json_column.tolist().index(JSON_Selected)
+        aux_selected = JSON_Selected.replace('.json', '')
+        selected_index = json_column.tolist().index(aux_selected)
     except ValueError:
-        print(f"El JSON '{JSON_Selected}' no se encuentra en la columna 'JSON'.")
+        print(f"No se ha encontrado un alumno asociado al JSON '{JSON_Selected}' en la columna 'FILENAME'.")
         return None
     
     # Crear el diccionario de notas
@@ -459,7 +532,7 @@ def generar_datos():
         print("El archivo existe. Intentando leer...")
         df = pd.read_excel(archivo_excel)
         print("Archivo leído correctamente.")
-    json_column = df['JSON']
+    json_column = df['FILENAME']
     
     json_names = json_column.dropna().tolist()
     print(json_names)
@@ -470,9 +543,9 @@ def generar_datos():
         n_mensajes = 0
         promedio_longitud_mensaje = 0
         promedio_dispersión = 0
-        path = "data/extracted_files/" + jsonn
+        path = UPLOAD_DIR / (jsonn + '.json')
         print(path)
-        json_files.append(jsonn)
+        json_files.append(jsonn + '.json')
         aux_conversations = load_conversations(path)
 
         for conversation in aux_conversations:
@@ -872,7 +945,7 @@ def analisisIA(asignatura: Asignatura):
         print("El archivo existe. Intentando leer...")
         df = pd.read_excel(archivo_excel)
         print("Archivo leído correctamente.")
-    json_column = df['JSON']
+    json_column = df['FILENAME']
     
     json_names = json_column.dropna().tolist()
     print(json_names)
@@ -883,8 +956,9 @@ def analisisIA(asignatura: Asignatura):
     results_IA = []
 
     for jsonn in json_names:
-        path = "data/extracted_files/" + jsonn
+        path = UPLOAD_DIR / (jsonn + '.json')
         aux_conversations = load_conversations(path)
+        json_load = jsonn + ".json"
 
         messages = []
         for conversation in aux_conversations:
@@ -907,9 +981,9 @@ def analisisIA(asignatura: Asignatura):
         input_tokens = count_tokens(combined_messages)
 
         if input_tokens > 60000:
-            print(f"El número de tokens de entrada de {jsonn} excede el límite de 60.000.")
+            print(f"El número de tokens de entrada de {json_load} excede el límite de 60.000.")
         else:
-            json_files.append(jsonn)
+            json_files.append(json_load)
             response = client.chat.completions.create(
                 model="gpt-4o-mini-2024-07-18",  # o el modelo que prefieras gpt-4o-mini-2024-07-18
                 messages=[
@@ -980,11 +1054,12 @@ async def upload_file(file: UploadFile = File(...)):
             print("Leyendo jsons...")
             df = pd.read_excel(archivo_excel)
             print("Archivo leído correctamente.")
-        json_column = df['JSON']
+        json_column = df['FILENAME']
     
         json_names = json_column.dropna().tolist()
         for jsonn in data_dict['json']:
-            if jsonn not in json_names:
+            aux = jsonn.replace('.json', '')
+            if aux not in json_names:
                 hayResultados = 0
                 print("El archivo seleccionado no pertenece a las conversaciones cargadas.")
                 return JSONResponse(content={"status": "error", "message": "El archivo seleccionado no pertenece a las conversaciones cargadas."}, status_code=400)

@@ -18,27 +18,41 @@
                 </a>
             </h1>
         </div>
-        <div class="w-1/8 items-center">
+        <div class="w-1/8 items-center relative group z-50">
             <h1 class="text-1xl ml-8 flex-grow">
-                <a href="#" class="icon-group" onclick="pagina_conversaciones()">
-                    <span class="material-symbols-outlined icons">bar_chart</span>
-                    ESTADÍSTICAS
-                </a>
-            </h1>
-        </div>
-        <div class="w-1/8 items-center">
-            <h1 class="text-1xl ml-8 flex-grow">
-                <a href="#" class="icon-group" onclick="volverPaginaAnalisis()">
+                <a href="#" class="icon-group pagina-activa" id="inicio-link">
                     <span class="material-symbols-outlined icons">analytics</span>
-                    ANÁLISIS DE CORRELACIÓN
+                    ANÁLISIS
+                    <span class="material-symbols-outlined icon">stat_minus_1</span>
                 </a>
             </h1>
+            <!-- Dropdown Content -->
+            <div class="dropdown-content hidden absolute bg-black mt-2 w-44 z-50 rounded-md shadow-lg group-hover:block">
+                <h1 class="text-1xl px-4 py-2 flex-grow">
+                    <a href="#" id="estadisticasLink" class="icon-group" onclick="pagina_conversaciones()">
+                        <span class="material-symbols-outlined icons">bar_chart</span>
+                        ESTADÍSTICAS
+                    </a>
+                </h1>
+                <h1 class="text-1xl px-4 py-2 flex-grow">
+                    <a href="#" id="correlacionLink" class="icon-group" onclick="pagina_correlacion()">
+                        <span class="material-symbols-outlined icons">grain</span>
+                        CORRELACIÓN
+                    </a>
+                </h1>
+                <h1 class="text-1xl px-4 py-2 flex-grow">
+                    <a href="#" class="icon-group pagina-activa">
+                        <span class="material-symbols-outlined icons">network_node</span>
+                        PREDICCIÓN
+                    </a>
+                </h1>
+            </div>
         </div>
         <div class="w-1/8 items-center">
             <h1 class="text-1xl ml-8 flex-grow">
-                <a href="#" class="icon-group pagina-activa">
-                    <span class="material-symbols-outlined icons">network_node</span>
-                    PREDICCIÓN
+                <a href="#" class="icon-group" id="ayuda-link" onclick="ayuda()">
+                    <span class="material-symbols-outlined icons">help</span>
+                    AYUDA
                 </a>
             </h1>
         </div>

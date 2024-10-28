@@ -1,6 +1,16 @@
-﻿//Pagina conversaciones
-function pagina_conversaciones() {
+﻿//Pagina estadisticas
+function pagina_estadisticas() {
     window.location.href = '/templates/conversaciones.html';
+}
+
+//Pagina correlacion
+function pagina_correlacion() {
+    window.location.href = '/templates/analisis.html';
+}
+
+//Pagina prediccion
+function pagina_prediccion() {
+    window.location.href = '/templates/entrenamiento.html';
 }
 
 function ayuda() {
@@ -27,12 +37,13 @@ form.addEventListener('submit', async (event) => {
 
     try {
         // Realizar la solicitud a la API
-        const response = await fetch('/api/upload-zip', {
+        const response = await fetch('/api/upload-zip2', {
             method: 'POST',
             body: formData
         });
+        const data = await response.json();
 
-        if (response.ok) {
+        if (response.ok && !data.isUploadDirEmpty) {
             resultDiv.textContent = 'Archivo cargado y extraído exitosamente.';
             errorDiv.style.display = 'none';
             errorDiv.textContent = '';
@@ -43,13 +54,14 @@ form.addEventListener('submit', async (event) => {
             atrCalc.style.display = 'none';
             atrCarg.style.display = 'none';
         } else {
-            const error = await response.json();
-            errorDiv.textContent = `Error: ${error.detail}`;
+            errorDiv.textContent = 'Error: No se ha encontrado ningun archivo JSON o la estructura del ZIP es incorrecta';
             errorDiv.style.display = 'block';
             resultDiv.textContent = '';
             usarIA.style.display = 'none';
             document.getElementById("estadisticasLink").classList.add("disabled");
             document.getElementById("upload-excel").classList.add('boton-disabled');
+            document.getElementById("correlacionLink").classList.add('disabled');
+            document.getElementById("prediccionLink").classList.add('disabled');
             sessionStorage.removeItem('estadisticasEnabled');
             atrCalc.style.display = 'none';
             atrCarg.style.display = 'none';
@@ -64,6 +76,8 @@ form.addEventListener('submit', async (event) => {
         usarIA.style.display = 'none';
         document.getElementById("estadisticasLink").classList.add("disabled");
         document.getElementById("upload-excel").classList.add('boton-disabled');
+        document.getElementById("correlacionLink").classList.add('disabled');
+        document.getElementById("prediccionLink").classList.add('disabled');
         sessionStorage.removeItem('estadisticasEnabled');
     }
 });
@@ -87,6 +101,9 @@ form2.addEventListener('submit', async (event) => {
 
         if (response.ok) {
             resultDiv.textContent = 'Archivo cargado exitosamente.';
+            document.getElementById("correlacionLink").classList.remove('disabled');
+            document.getElementById("prediccionLink").classList.remove('disabled');
+            sessionStorage.setItem('corrPredEnabled', 'true');
             errorDiv.style.display = 'none';
             errorDiv.textContent = '';
         } else {
@@ -94,12 +111,18 @@ form2.addEventListener('submit', async (event) => {
             errorDiv.textContent = `Error: ${error.detail}`;
             errorDiv.style.display = 'block';
             resultDiv.textContent = '';
+            document.getElementById("correlacionLink").classList.add('disabled');
+            document.getElementById("prediccionLink").classList.add('disabled');
+            sessionStorage.removeItem('corrPredEnabled');
         }
 
     } catch (error) {
         // Manejar cualquier error que ocurra durante la solicitud
         console.error("Error:", error);
         errorDiv.textContent = 'Ha ocurrido un error en la comunicación con el servidor.';
+        document.getElementById("correlacionLink").classList.add("disabled");
+        document.getElementById("prediccionLink").classList.add("disabled");
+        sessionStorage.removeItem('corrPredEnabled');
         errorDiv.style.display = 'block';
         resultDiv.textContent = '';
     }
@@ -245,12 +268,14 @@ document.getElementById('fileInput').addEventListener('change', function(event) 
 document.addEventListener('DOMContentLoaded', function () {
     // Comprobar si 'estadisticasEnabled' está en sessionStorage
     let isEstadisticasEnabled = sessionStorage.getItem('estadisticasEnabled');
+    let isCorrPredEnabled = sessionStorage.getItem('corrPredEnabled');
     
     // Comprobar si la carpeta en el servidor está vacía
     fetch('/api/check-folder-empty')
         .then(response => response.json())
         .then(data => {
-            if (isEstadisticasEnabled === 'true' && !data.isEmpty) {
+            // Si UPLOAD_DIR esta vacia deshabilitar
+            if (isEstadisticasEnabled === 'true' && !data.isUploadDirEmpty) {
                 // Habilitar el enlace si está guardado en localStorage y la carpeta no está vacía
                 document.getElementById("estadisticasLink").classList.remove('disabled');
                 document.getElementById("upload-excel").classList.remove('boton-disabled');
@@ -258,8 +283,22 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 // Deshabilitar el enlace si la carpeta está vacía
                 document.getElementById("estadisticasLink").classList.add('disabled');
+                document.getElementById("correlacionLink").classList.add('disabled');
+                document.getElementById("prediccionLink").classList.add('disabled');
+                sessionStorage.removeItem('corrPredEnabled');
                 document.getElementById("upload-excel").classList.add('boton-disabled');
                 document.getElementById("usar-IA").style.display = 'none';
+            }
+
+            // Si UPLOAD_EXCEL esta vacia deshabilitar
+            if (isCorrPredEnabled === 'true' && !data.isUploadExcelEmpty) {
+                // Habilitar el enlace si está guardado en localStorage y la carpeta no está vacía
+                document.getElementById("correlacionLink").classList.remove('disabled');
+                document.getElementById("prediccionLink").classList.remove('disabled');
+            } else {
+                // Deshabilitar el enlace si la carpeta está vacía
+                document.getElementById("correlacionLink").classList.add('disabled');
+                document.getElementById("prediccionLink").classList.add('disabled');
             }
         })
         .catch(error => {
