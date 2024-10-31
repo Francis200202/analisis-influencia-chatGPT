@@ -100,7 +100,7 @@ async function enviarDatos() {
             
             // Desplazar el contenedor hacia el final
             document.getElementById('analisis').scrollTo({
-                top: 135,
+                top: 165,
                 behavior: 'smooth'
             });
         })
@@ -115,6 +115,7 @@ async function enviarDatos() {
     let globalEtiqueta = '';
     let globalPorcentaje = '';
     let globalResultadoId = '';
+    let datosAlumnosParaPredecir = {};
 
 function mostrarFormularioPrediccion(caracteristicas, metodo, etiqueta, porcentaje, resultadoId) {
     // Guardar los parámetros en las variables globales
@@ -123,33 +124,148 @@ function mostrarFormularioPrediccion(caracteristicas, metodo, etiqueta, porcenta
     globalPorcentaje = porcentaje;
     globalResultadoId = resultadoId;
 
-    // Dividir las características para crear campos de entrada
+    // Dividir las características
     const caracteristicasArray = caracteristicas.split(', ');
-    const formPrediccion = document.getElementById('formPrediccion');
-    
-    // Limpiar el formulario anterior
-    formPrediccion.innerHTML = '';
-    
-    // Crear campos de entrada para cada característica
-    caracteristicasArray.forEach(caracteristica => {
-        const label = document.createElement('label');
-        label.innerHTML = `<strong>${caracteristica}:</strong>`;
-        label.style.display = 'block'; // Asegura que el texto esté encima del input
-        label.style.marginBottom = '5px'; // Añade espacio entre el texto y el input
 
-        // Crear el campo de entrada
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.name = caracteristica;
-        input.style.width = '100%';
+    // Verificar si hay que calcular caracteristicas mediante ia
+    const necesitaValoresIA = caracteristicasArray.some(caracteristica => 
+        caracteristica === '% Relación con la asignatura' || caracteristica === '% Conocimiento sobre la asignatura'
+    );
 
-        // Añadir los elementos al formulario
-        formPrediccion.appendChild(label);
-        formPrediccion.appendChild(input);
-    });
+    // Comprobar si el objeto no está vacío
+    if (Object.keys(datosAlumnosParaPredecir).length > 0) {
+        if (necesitaValoresIA) {
+            const aux = datosAlumnosParaPredecir.caracteristicas;
+            const CalculadosValoresIA = aux.some(caracteristica => 
+                caracteristica === '% Relación con la asignatura' || caracteristica === '% Conocimiento sobre la asignatura'
+            );
+            if (CalculadosValoresIA) {
+                // Cambiar el vector de características
+                datosAlumnosParaPredecir.caracteristicas = caracteristicasArray;
+                document.getElementById("button-aceptar").classList.remove('boton-disabled');
+            } else {
+                document.getElementById("button-aceptar").classList.add('boton-disabled');
+            }
+        } else {
+            // Cambiar el vector de características
+            datosAlumnosParaPredecir.caracteristicas = caracteristicasArray;
+            document.getElementById("button-aceptar").classList.remove('boton-disabled');
+        }
+    }
 
     // Mostrar el modal
     document.getElementById('prediccionModal').style.display = 'block';
+
+    const form = document.getElementById('upload-form');
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        const formData = new FormData(form);
+        const resultDiv = document.getElementById('result');
+        const errorDiv = document.getElementById('error');
+
+        try {
+            // Realizar la solicitud a la API
+            const response = await fetch('/api/upload-zip-prediction', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (response.ok && !data.isUploadDirEmpty) {
+                
+
+                // Solicitar los datos de los chats de los alumnos
+                const responseDatos = await fetch('/api/obtener-datos-chats');
+                const datos = await responseDatos.json();
+
+                if (responseDatos.ok) {
+                    // Filtrar los datos de cada alumno según las características seleccionadas
+                    datosAlumnosParaPredecir = {
+                        filename: datos.filename,
+                        promedio_mensajes: datos.promedio_mensajes,
+                        longitud_promedio: datos.longitud_promedio,
+                        dispersion_promedio: datos.dispersion_promedio,
+                        caracteristicas: caracteristicasArray
+                    };
+
+                    console.log("Datos filtrados de alumnos:", datosAlumnosParaPredecir);
+
+                    if (necesitaValoresIA) {
+                         // Mostrar el indicador de carga
+                        var loadingIndicator = document.getElementById('loading-indicator');
+                        loadingIndicator.style.display = 'block';
+                        try {
+                            const responseIA = await fetch('/api/obtener_valores_ia');
+                            const datosIA = await responseIA.json();
+
+                            if (responseIA.ok) {
+                                const valoresIA = datosIA.IA
+                                datosAlumnosParaPredecir = {
+                                    ...datosAlumnosParaPredecir,
+                                    relacion: datosIA.relacion,
+                                    conocimiento: datosIA.conocimiento
+                                };
+                                resultDiv.textContent = 'Archivo cargado y extraído exitosamente.';
+                                errorDiv.style.display = 'none';
+                                errorDiv.textContent = '';
+                                console.log("Datos de IA obtenidos:", datosAlumnosParaPredecir);
+                                document.getElementById("button-aceptar").classList.remove('boton-disabled');
+                            } else {
+                                throw new Error('Error al obtener los valores de IA');
+                                document.getElementById("button-aceptar").classList.add('boton-disabled');
+                                datosAlumnosParaPredecir = {};
+                            }
+                        } catch (error) {
+                            console.error("Error:", error);
+                            const errorDiv = document.getElementById('error');
+                            errorDiv.textContent = 'Error al obtener los valores de IA';
+                            errorDiv.style.display = 'block';
+                            document.getElementById("button-aceptar").classList.add('boton-disabled');
+                            datosAlumnosParaPredecir = {};
+                            return; // Detener ejecución si hay error en la obtención de IA
+                        } finally {
+                            // Ocultar el indicador de carga
+                            loadingIndicator.style.display = 'none';
+                        }
+                    } else {
+                        resultDiv.textContent = 'Archivo cargado y extraído exitosamente.';
+                        errorDiv.style.display = 'none';
+                        errorDiv.textContent = '';
+                        // Habilitar boton
+                        document.getElementById("button-aceptar").classList.remove('boton-disabled');
+                    }
+
+                } else {
+                    errorDiv.textContent = 'Error al obtener los datos de los chats de los alumnos.';
+                    errorDiv.style.display = 'block';
+                    resultDiv.textContent = '';
+
+                    // Deshabilitar boton
+                    document.getElementById("button-aceptar").classList.add('boton-disabled');
+                    datosAlumnosParaPredecir = {};
+                }
+                
+            } else {
+                errorDiv.textContent = 'Error: No se ha encontrado ningun archivo JSON o la estructura del ZIP es incorrecta';
+                errorDiv.style.display = 'block';
+                resultDiv.textContent = '';
+                // Deshabilitar boton
+                document.getElementById("button-aceptar").classList.add('boton-disabled');
+                datosAlumnosParaPredecir = {};
+            }
+
+        } catch (error) {
+            // Manejar cualquier error que ocurra durante la solicitud
+            console.error("Error:", error);
+            errorDiv.textContent = 'Ha ocurrido un error en la comunicación con el servidor.';
+            errorDiv.style.display = 'block';
+            resultDiv.textContent = '';
+            // Deshabilitar boton
+            document.getElementById("button-aceptar").classList.add('boton-disabled');
+            datosAlumnosParaPredecir = {};
+        }
+    });
 }
 
 function cerrarFormularioPrediccion() {
@@ -158,63 +274,84 @@ function cerrarFormularioPrediccion() {
 }
 
 async function realizarPrediccion() {
-    // Obtener los valores del formulario
-    const formData = new FormData(document.getElementById('formPrediccion'));
-    const valores = [];
-    const caracteristicas = [];
+    const resultados = [];
 
-    // Recopilar los valores y las características
-    formData.forEach((value, key) => {
-        valores.push(parseFloat(value)); // Suponiendo que los valores son numéricos
-        caracteristicas.push(key);
-    });
-
-    // Construir el objeto de datos a enviar
-    const datosPrediccion = {
-        metodo: globalMetodo,
-        caracteristicas: caracteristicas,
-        etiqueta: globalEtiqueta,
-        porcentaje_prueba: globalPorcentaje,
-        valores: valores
-    };
-
-    console.log(datosPrediccion);
-
-    // Realizar la predicción enviando datos al servidor
-    await fetch('/api/predecir', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(datosPrediccion)
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log(data);
-        const prediccion = data.prediccion;
-        const selectedCaracteristicas = data.caracteristicas;
-        const selectedValores = data.valores;
-
-        // Actualizar el contenedor de resultados correspondiente
-        const resultDiv = document.getElementById(globalResultadoId);
-        if (resultDiv) {
-            let caracteristicasValoresHTML = '';
-            for (let i = 0; i < selectedCaracteristicas.length; i++) {
-                caracteristicasValoresHTML += `<li>${selectedCaracteristicas[i]}: ${selectedValores[i]}</li>`;
+    // Iteramos sobre cada alumno en `datosAlumnosParaPredecir`
+    for (let i = 0; i < datosAlumnosParaPredecir.filename.length; i++) {
+        // Obtener el `filename` actual y sus valores correspondientes
+        const alumnoFilename = datosAlumnosParaPredecir.filename[i];
+        
+        // Crear objeto `valores` solo con las características seleccionadas
+        const valores = [];
+        datosAlumnosParaPredecir.caracteristicas.forEach((caracteristica) => {
+            if (caracteristica === "Promedio de mensajes") {
+                valores.push(datosAlumnosParaPredecir.promedio_mensajes[i]);
+            } else if (caracteristica === "Longitud promedio de mensajes") {
+                valores.push(datosAlumnosParaPredecir.longitud_promedio[i]);
+            } else if (caracteristica === "Dispersion de los mensajes") {
+                valores.push(datosAlumnosParaPredecir.dispersion_promedio[i]);
+            } else if (caracteristica === "% Relación con la asignatura") {
+                valores.push(datosAlumnosParaPredecir.relacion[i]);
+            } else if (caracteristica === "% Conocimiento sobre la asignatura") {
+                valores.push(datosAlumnosParaPredecir.conocimiento[i]);
             }
-            caracteristicasValoresHTML += '</ul>';
+        });
 
-            const predictionResultDiv = document.createElement('div');
-            predictionResultDiv.innerHTML = `
-                ${caracteristicasValoresHTML}
-                <p><strong>Resultados de la predicción: </strong><span>${prediccion}</span></p>
-            `;
-            resultDiv.appendChild(predictionResultDiv);
+        // Construir el objeto de datos a enviar para cada alumno
+        const datosPrediccion = {
+            metodo: globalMetodo,
+            caracteristicas: datosAlumnosParaPredecir.caracteristicas,
+            etiqueta: globalEtiqueta,
+            porcentaje_prueba: globalPorcentaje,
+            valores: valores
+        };
+
+        // Enviar los datos para la predicción
+        try {
+            const response = await fetch('/api/predecir', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(datosPrediccion)
+            });
+            const data = await response.json();
+
+            // Agregar los resultados individuales al arreglo de `resultados`
+            resultados.push({
+                filename: alumnoFilename,
+                prediccion: data.prediccion,
+                caracteristicas: data.caracteristicas,
+                valores: data.valores
+            });
+        } catch (error) {
+            console.error("Error:", error);
         }
-    })
-    .catch(error => {
-        console.error("Error:", error);
-    });
+    }
+
+    // Actualizar la interfaz de usuario con todos los resultados de predicción
+    const resultDiv = document.getElementById(globalResultadoId);
+    if (resultDiv) {
+        resultados.forEach(resultado => {
+            // Crear un contenedor para cada resultado
+            const predictionResultDiv = document.createElement('div');
+            predictionResultDiv.className = 'resultado-prediccion'; // Aplicar la clase CSS para el estilo
+
+            // Agregar contenido a la tarjeta
+            predictionResultDiv.innerHTML = `
+                <h3><strong>${resultado.filename}</strong></h3>
+                <ul>
+                    ${resultado.caracteristicas.map((caracteristica, index) => `
+                        <li>${caracteristica}: ${resultado.valores[index]}</li>
+                    `).join('')}
+                </ul>
+                <p><strong>Resultados de la predicción (${globalEtiqueta}): </strong><span>${resultado.prediccion}</span></p>
+            `;
+        
+            // Añadir la tarjeta al contenedor de resultados
+            resultDiv.appendChild(predictionResultDiv);
+        });
+    }
 
     // Ocultar el modal
     cerrarFormularioPrediccion();

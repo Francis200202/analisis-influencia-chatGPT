@@ -438,7 +438,7 @@
 .entrenamiento-container {
     background-color: #FFFF;
     border-radius: 20px;
-    box-shadow: 0 0px 15px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0px 10px rgba(0, 0, 0, 0.3);
 }
 
 .entrenamiento-select {
@@ -551,7 +551,6 @@
     height: 50px;
     align-content: center;
     text-align: center;
-    
 }
 
 #predecir-button {
@@ -568,7 +567,7 @@
     position: fixed; /* Fijo en la ventana */
     z-index: 1000; /* Se muestra encima de otros elementos */
     left: 0;
-    top: 0;
+    top: 0%;
     width: 100%;
     height: 100%;
     background-color: rgba(0,0,0,0.7); /* Fondo negro con más opacidad */
@@ -582,9 +581,15 @@
     padding: 30px;
     border-radius: 10px; /* Bordes redondeados */
     width: 60%; /* Ancho del modal */
-    max-width: 600px; /* Ancho máximo para pantallas más grandes */
+    height: 65%;
+    max-width: 700px; /* Ancho máximo para pantallas más grandes */
     box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.3); /* Sombra alrededor */
     animation: modalFadeIn 0.5s; /* Animación de aparición suave */
+}
+
+.modal-scroll {
+    overflow: auto;
+    height: 75%;
 }
 
 /* Animación de aparición */
@@ -620,38 +625,50 @@
     font-family: 'Arial', sans-serif;
     font-size: 24px;
     margin-top: 0;
-    margin-bottom: 20px;
     color: #333;
     text-align: center;
     border-bottom: 2px solid #ddd;
     padding-bottom: 10px;
 }
 
-/* Estilos para el formulario */
-#formPrediccion {
-    display: flex;
-    flex-direction: column;
-    gap: 15px; /* Espaciado entre los campos del formulario */
-    overflow-y: auto;
-    max-height: 40vh;
+.cargar-chats {
+    border-radius: 8px;
+    padding: 2em;
+    width: 70%;
+    text-align: center;
+    margin: auto;
 }
 
-    #formPrediccion input, #formPrediccion select {
-        padding: 10px;
-        font-size: 16px;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        width: 100%;
-        box-sizing: border-box;
+    .cargar-chats h1 {
+        font-size: 1.5em;
+        margin-bottom: 1em;
+    }
+
+    .cargar-chats form {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .cargar-chats input[type="file"] {
+        margin-bottom: 1em;
+        border: 1px solid black;
+        background-color: white;
+        padding: 0.5em;
+        border-radius: 4px;
+    }
+
+    .cargar-chats #result {
+        margin-top: 1em;
     }
 
 .button-container {
     text-align: center; /* Centra el botón horizontalmente dentro del contenedor */
-    margin-top: 30px; /* Añade un margen superior para separación */
+    margin-top: 10px; /* Añade un margen superior para separación */
 }
 
 /* Estilos para el botón de aceptar */
-.modal-content button {
+#button-aceptar {
     background-color: black;
     color: white;
     width: 100%;
@@ -664,7 +681,42 @@
     transition: background-color 0.3s ease;
 }
 
-    .modal-content button:hover {
+    #button-aceptar:hover {
         background-color: lightgrey;
         color: black;
+    }
+
+.resultado-prediccion {
+    background-color: #f9f9f9; /* Color de fondo claro */
+    border: 1px solid #ddd; /* Borde sutil */
+    border-radius: 8px; /* Bordes redondeados */
+    padding: 20px; /* Espacio interno */
+    margin: 10px 0; /* Margen entre tarjetas */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* Sombra para profundidad */
+    margin-top: 20px;
+}
+
+    .resultado-prediccion h3 {
+        margin: 0 0 10px; /* Espaciado debajo del título */
+        color: #333; /* Color del título */
+    }
+
+    .resultado-prediccion ul {
+        list-style-type: none; /* Quitar los puntos de la lista */
+        padding: 0; /* Sin padding */
+    }
+
+        .resultado-prediccion ul li {
+            padding: 5px 0; /* Espaciado vertical en cada ítem */
+            border-bottom: 1px solid #eee; /* Línea divisoria entre ítems */
+        }
+
+            .resultado-prediccion ul li:last-child {
+                border-bottom: none; /* Quitar la línea divisoria del último ítem */
+            }
+
+    .resultado-prediccion p {
+        margin: 10px 0 0; /* Espaciado para el texto de predicción */
+        font-size: 16px; /* Tamaño de fuente */
+        color: #555; /* Color del texto */
     }

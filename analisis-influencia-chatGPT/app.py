@@ -53,6 +53,7 @@ DB_SETTINGS = "data/settings.db"
 UPLOAD_DIR = Path("data/extracted_files")
 UPLOAD_EXCEL = Path("data/excel")
 RESULTS_DIR = Path("data/results")
+UPLOAD_PREDICT = Path("data/files_for_predict")
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -174,7 +175,7 @@ async def upload_zip2(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, buffer)
 
     # Extraer y procesar el archivo zip
-    temp_extract_folder = UPLOAD_DIR / "temp_extracted"
+    temp_extract_folder = UPLOAD_DIR / Path(file.filename).stem
     os.makedirs(temp_extract_folder, exist_ok=True)
     extract_nested_zip(temp_zip_path, temp_extract_folder)
     search_conversations_json(temp_extract_folder, UPLOAD_DIR)
@@ -789,6 +790,97 @@ def entrenar(datos: EntrenamientoRequest):
     }
 
 
+@api_app.post("/upload-zip-prediction")
+async def upload_zip_prediction(file: UploadFile = File(...)):
+
+    if not file.filename.endswith(".zip"):
+        raise HTTPException(status_code=400, detail="Sólo se permiten archivos zip. Consultar 'AYUDA'")
+    
+    # Eliminar el contenido existente en la carpeta de destino
+    if UPLOAD_PREDICT.exists():
+        shutil.rmtree(UPLOAD_PREDICT)
+    UPLOAD_PREDICT.mkdir(parents=True, exist_ok=True)
+
+    # Guardar el archivo zip cargado temporalmente
+    temp_zip_path = UPLOAD_PREDICT / file.filename
+    with open(temp_zip_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # Extraer y procesar el archivo zip
+    temp_extract_folder = UPLOAD_PREDICT / Path(file.filename).stem
+    os.makedirs(temp_extract_folder, exist_ok=True)
+    extract_nested_zip(temp_zip_path, temp_extract_folder)
+    search_conversations_json(temp_extract_folder, UPLOAD_PREDICT)
+
+    # Limpiar carpeta temporal y archivo temporal
+    shutil.rmtree(temp_extract_folder)
+    temp_zip_path.unlink()
+
+    is_upload_dir_empty = not os.listdir(UPLOAD_PREDICT)
+
+    return {
+        "isUploadDirEmpty": is_upload_dir_empty
+    }
+
+
+@api_app.get("/obtener-datos-chats")
+def obtener_datos_chats():
+    # Lógica para generar los datos
+
+    promedio = []
+    longitud_promedio = []
+    dispersion_promedio = []
+
+    json_files = []
+    for filename in os.listdir(UPLOAD_PREDICT):
+        if filename.endswith(".json"):
+            json_files.append(filename)
+    
+    for jsonn in json_files:
+        n_mensajes = 0
+        promedio_longitud_mensaje = 0
+        promedio_dispersión = 0
+        path = UPLOAD_PREDICT / jsonn
+        aux_conversations = load_conversations(path)
+
+        for conversation in aux_conversations:
+            longitud_mensaje = 0
+            n_mensajes += len(conversation.messages)
+            cont_mensajes_user = 0
+            intervalos = []
+
+            for i, mensaje in enumerate(conversation.messages):
+                if(mensaje.role == 'user'):
+                    longitud_mensaje += len(mensaje.text)
+                    cont_mensajes_user += 1
+
+                    if i > 0:
+                        intervalo = mensaje.create_time - conversation.messages[i-1].create_time
+                        intervalos.append(intervalo)
+
+            if(cont_mensajes_user != 0):
+                promedio_longitud_mensaje += longitud_mensaje / cont_mensajes_user
+
+            if len(intervalos) > 0:
+                media_intervalos = sum(intervalos) / len(intervalos)
+                desviacion_media = sum(abs(intervalo - media_intervalos) for intervalo in intervalos) / len(intervalos)
+                promedio_dispersión += desviacion_media
+
+        if(len(aux_conversations) != 0):
+            promedio.append(float(n_mensajes / len(aux_conversations)))
+            longitud_promedio.append(float(promedio_longitud_mensaje / len(aux_conversations)))
+            dispersion_promedio.append(float(promedio_dispersión / len(aux_conversations)))
+        else:
+            promedio.append(0)
+            longitud_promedio.append(0)
+            dispersion_promedio.append(0)
+ 
+    datos = {"filename":json_files, "promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio":dispersion_promedio}
+    
+    
+    return JSONResponse(content=datos)
+
+
 @api_app.post("/predecir")
 def predecir(datos: PrediccionDatos):
     # Procesas los datos recibidos
@@ -925,8 +1017,10 @@ def count_tokens(text, model="gpt-3.5-turbo"):
 def analisisIA(asignatura: Asignatura):
     global resultados_IA
     global hayResultados
+    global subject
 
     asignatura_name = asignatura.asignatura
+    subject = asignatura_name
 
     prompt = (
         "Analiza la conversación anterior de un alumno con Chat GPT y responde solo con "
@@ -935,7 +1029,7 @@ def analisisIA(asignatura: Asignatura):
         ". El segundo número debe indicar el nivel de dificultad o conocimiento mostrado en la "
         "conversación sobre la asignatura: " + asignatura_name + ", en una escala del 1 al 100. "
         "No des explicaciones adicionales. Asegurate que el formato sea 'x, y', siendo x e y números"
-)
+    )
 
     xlsx_files = list(UPLOAD_EXCEL.glob("*.xlsx"))
     archivo_excel = xlsx_files[0]
@@ -1007,10 +1101,9 @@ def analisisIA(asignatura: Asignatura):
 
     if not resultados_IA:
         hayResultados = 0
-        print(0)
     else:
         hayResultados = 1
-        print(1)
+        generar_datos()
                     
     return {"mensaje": f"El análisis para la asignatura '{asignatura}' se ha completado exitosamente."}
 
@@ -1021,13 +1114,16 @@ def obtener_resultados():
     if hayResultados==0:
         raise HTTPException(status_code=400, detail="No existen atributos calculados")
 
-    return JSONResponse(content=resultados_IA)
+    resultados_dict = {**resultados_IA, "asignatura": subject}
+
+    return JSONResponse(content=resultados_dict)
 
 
 @api_app.post("/uploadResults")
 async def upload_file(file: UploadFile = File(...)):
     global resultados_IA
     global hayResultados
+    global subject
 
     if file.content_type == 'text/plain':
         contents = await file.read()
@@ -1065,12 +1161,112 @@ async def upload_file(file: UploadFile = File(...)):
                 return JSONResponse(content={"status": "error", "message": "El archivo seleccionado no pertenece a las conversaciones cargadas."}, status_code=400)
             
 
-        resultados_IA = data_dict
+        resultados_IA = {key: data_dict[key] for key in ['json', 'IA']}
+        subject = data_dict['asignatura'][0]
         hayResultados = 1
+
+        print(resultados_IA)
+        print(subject)
+
+        generar_datos()
         
         return JSONResponse(content={"status": "success", "data": data_dict})
     else:
         return JSONResponse(content={"status": "error", "message": "Tipo de archivo no válido"}, status_code=400)
+
+
+@api_app.get("/obtener_valores_ia")
+def obtener_valores_ia():
+    global subject
+
+    asignatura_name = subject
+
+    prompt = (
+        "Analiza la conversación anterior de un alumno con Chat GPT y responde solo con "
+        "dos números separados por una coma. El primer número debe indicar el porcentaje de "
+        "la conversación que está relacionada con temas de la asignatura: " + asignatura_name +
+        ". El segundo número debe indicar el nivel de dificultad o conocimiento mostrado en la "
+        "conversación sobre la asignatura: " + asignatura_name + ", en una escala del 1 al 100. "
+        "No des explicaciones adicionales. Asegurate que el formato sea 'x, y', siendo x e y números"
+    )
+
+    json_names = []
+    for filename in os.listdir(UPLOAD_PREDICT):
+        if filename.endswith(".json"):
+            json_names.append(filename)
+
+    client = OpenAI(api_key="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")
+
+    json_files = []
+    results_IA = []
+
+    for jsonn in json_names:
+        path = UPLOAD_PREDICT / jsonn
+        aux_conversations = load_conversations(path)
+        json_load = jsonn
+
+        messages = []
+        for conversation in aux_conversations:
+            for msg in conversation.messages:
+                if not msg:
+                    continue
+
+                messages.append({
+                    "role": msg.role,
+                    "text": msg.text
+                })
+
+        messages_str = json.dumps(messages, indent=4)
+        messages_decode = messages_str.encode().decode('unicode_escape')
+
+        # Unir todos los mensajes para calcular los tokens
+        combined_messages = "Eres un asistente que recuerda el contexto." + messages_decode + prompt
+
+        # Contar tokens
+        input_tokens = count_tokens(combined_messages)
+
+        if input_tokens > 60000:
+            error_message = f"El número de tokens de entrada de {json_load} excede el límite de 60,000."
+            print(error_message)
+            return JSONResponse(content={"error": error_message}, status_code=400)
+        else:
+            json_files.append(json_load)
+            response = client.chat.completions.create(
+                model="gpt-4o-mini-2024-07-18",  # o el modelo que prefieras gpt-4o-mini-2024-07-18
+                messages=[
+                    {"role": "system", "content": "Eres un asistente que recuerda el contexto."},
+                    {"role": "user", "content": messages_decode},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=20
+            )
+            respuesta = response.choices[0].message.content
+            results_IA.append(respuesta)
+            print(respuesta)
+            time.sleep(25)
+
+    atributos_dict = {
+        "json": json_files,
+        "relacion": [],
+        "conocimiento": []
+    }
+
+    for ia_value in results_IA:
+        try:
+            # Dividir el valor en relación y conocimiento
+            relacion, conocimiento = ia_value.split(', ')
+        
+            # Agregar los valores a sus respectivas listas en atributos_dict
+            atributos_dict["relacion"].append(int(relacion))
+            atributos_dict["conocimiento"].append(int(conocimiento))
+        except ValueError:
+            print(f"Error al procesar el valor: '{ia_value}'. Formato no válido.")
+            return None
+
+    print(atributos_dict)
+
+                    
+    return JSONResponse(content=atributos_dict)
 
 
 

@@ -117,12 +117,26 @@
         <div id="prediccionModal" class="modal">
             <div class="modal-content">
                 <span class="close" onclick="cerrarFormularioPrediccion()">&times;</span>
-                <h2>Ingrese los valores para predecir</h2>
-                <form id="formPrediccion">
-                    <!-- Aquí irán los campos de las características -->
-                </form>
+                <h2>Introduzca los chats de los alumnos para predecir</h2>
+                <div class="modal-scroll">
+                    <div class="cargar-chats" id="cargar-zip">
+                        <h1>Cargar un archivo ZIP</h1>
+                        <form id="upload-form">
+                            <input name="file" type="file" accept=".zip">
+                            <button type="submit" class="p-2 bg-black text-white text-1xl w-2/4 rounded-full icon-group">
+                                <span class="material-symbols-outlined p-1 icons">upload</span>
+                            </button>
+                        </form>
+                        <div id="loading-indicator" style="display: none;">
+                            <center><img src="/load.gif" alt="Cargando..." /></center>
+                            <p>Este proceso puede durar varios minutos.</p>
+                        </div>
+                        <div id="result"></div>
+                        <div id="error"></div>
+                    </div>
+                </div>
                 <div class="button-container">
-                    <button onclick="realizarPrediccion()">Aceptar</button>
+                    <button id="button-aceptar" class="boton-disabled" onclick="realizarPrediccion()">Aceptar</button>
                 </div>
             </div>
         </div>

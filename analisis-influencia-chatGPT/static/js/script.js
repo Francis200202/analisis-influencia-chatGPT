@@ -106,6 +106,12 @@ form2.addEventListener('submit', async (event) => {
             sessionStorage.setItem('corrPredEnabled', 'true');
             errorDiv.style.display = 'none';
             errorDiv.textContent = '';
+
+            
+            fetch('/api/generar_datos')
+                .catch(error => console.error('Error al ejecutar la función:', error));
+            
+
         } else {
             const error = await response.json();
             errorDiv.textContent = `Error: ${error.detail}`;
@@ -197,7 +203,7 @@ async function guardarResultados() {
 
     try {
         // Solicitar los resultados desde el servidor (suponiendo que se necesita consultar los datos)
-        let response = await fetch('/api/obtenerResultados');  // Esta es una API que debes implementar
+        let response = await fetch('/api/obtenerResultados');
         let resultados = await response.json();
 
         if (!response.ok) {
