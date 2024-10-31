@@ -116,6 +116,7 @@ async function enviarDatos() {
     let globalPorcentaje = '';
     let globalResultadoId = '';
     let datosAlumnosParaPredecir = {};
+    let atribCalculados = 0;
 
 function mostrarFormularioPrediccion(caracteristicas, metodo, etiqueta, porcentaje, resultadoId) {
     // Guardar los parámetros en las variables globales
@@ -136,10 +137,8 @@ function mostrarFormularioPrediccion(caracteristicas, metodo, etiqueta, porcenta
     if (Object.keys(datosAlumnosParaPredecir).length > 0) {
         if (necesitaValoresIA) {
             const aux = datosAlumnosParaPredecir.caracteristicas;
-            const CalculadosValoresIA = aux.some(caracteristica => 
-                caracteristica === '% Relación con la asignatura' || caracteristica === '% Conocimiento sobre la asignatura'
-            );
-            if (CalculadosValoresIA) {
+            
+            if (atribCalculados === 1) {
                 // Cambiar el vector de características
                 datosAlumnosParaPredecir.caracteristicas = caracteristicasArray;
                 document.getElementById("button-aceptar").classList.remove('boton-disabled');
@@ -189,6 +188,8 @@ function mostrarFormularioPrediccion(caracteristicas, metodo, etiqueta, porcenta
                         caracteristicas: caracteristicasArray
                     };
 
+                    atribCalculados = 0;
+
                     console.log("Datos filtrados de alumnos:", datosAlumnosParaPredecir);
 
                     if (necesitaValoresIA) {
@@ -206,6 +207,7 @@ function mostrarFormularioPrediccion(caracteristicas, metodo, etiqueta, porcenta
                                     relacion: datosIA.relacion,
                                     conocimiento: datosIA.conocimiento
                                 };
+                                atribCalculados = 1;
                                 resultDiv.textContent = 'Archivo cargado y extraído exitosamente.';
                                 errorDiv.style.display = 'none';
                                 errorDiv.textContent = '';
@@ -244,6 +246,7 @@ function mostrarFormularioPrediccion(caracteristicas, metodo, etiqueta, porcenta
                     // Deshabilitar boton
                     document.getElementById("button-aceptar").classList.add('boton-disabled');
                     datosAlumnosParaPredecir = {};
+                    atribCalculados = 0;
                 }
                 
             } else {
@@ -288,7 +291,7 @@ async function realizarPrediccion() {
                 valores.push(datosAlumnosParaPredecir.promedio_mensajes[i]);
             } else if (caracteristica === "Longitud promedio de mensajes") {
                 valores.push(datosAlumnosParaPredecir.longitud_promedio[i]);
-            } else if (caracteristica === "Dispersion de los mensajes") {
+            } else if (caracteristica === "Dispersión de los mensajes") {
                 valores.push(datosAlumnosParaPredecir.dispersion_promedio[i]);
             } else if (caracteristica === "% Relación con la asignatura") {
                 valores.push(datosAlumnosParaPredecir.relacion[i]);

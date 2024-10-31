@@ -33,6 +33,13 @@ form.addEventListener('submit', async (event) => {
     const atrCalc = document.getElementById('atrib-calc');
     const atrCarg = document.getElementById('atrib-carg');
 
+    document.getElementById("estadisticasLink").classList.add("disabled");
+    document.getElementById("upload-excel").classList.add('boton-disabled');
+    document.getElementById("correlacionLink").classList.add('disabled');
+    document.getElementById("prediccionLink").classList.add('disabled');
+    sessionStorage.removeItem('estadisticasEnabled');
+    sessionStorage.removeItem('corrPredEnabled');
+
     document.getElementById('atrib-calc').style.display = 'none';
 
     try {

@@ -358,10 +358,48 @@ def get_activity():
 
 @api_app.get("/statistics")
 def get_statistics():
-    # Calculate the min, max, and average lengths
+    # Calcular el promedio de mensajes, longitud promedio y dispersion promedio
+    n_mensajes = 0
+    promedio_longitud_mensaje = 0
+    promedio_dispersión = 0
+
     lengths = []
-    for conv in conversations:
-        lengths.append((conv.total_length, conv.id))
+
+    for conversation in conversations:
+        # Calculate the min, max, and average lengths
+        lengths.append((conversation.total_length, conversation.id))
+
+        longitud_mensaje = 0
+        n_mensajes += len(conversation.messages)
+        cont_mensajes_user = 0
+        intervalos = []
+
+        for i, mensaje in enumerate(conversation.messages):
+            if(mensaje.role == 'user'):
+                longitud_mensaje += len(mensaje.text)
+                cont_mensajes_user += 1
+
+                if i > 0:
+                    intervalo = mensaje.create_time - conversation.messages[i-1].create_time
+                    intervalos.append(intervalo)
+
+        if(cont_mensajes_user != 0):
+            promedio_longitud_mensaje += longitud_mensaje / cont_mensajes_user
+
+        if len(intervalos) > 0:
+            media_intervalos = sum(intervalos) / len(intervalos)
+            desviacion_media = sum(abs(intervalo - media_intervalos) for intervalo in intervalos) / len(intervalos)
+            promedio_dispersión += desviacion_media
+
+    if(len(conversations) != 0):
+        promedio = float(n_mensajes / len(conversations))
+        longitud_promedio = float(promedio_longitud_mensaje / len(conversations))
+        dispersion_promedio = float(promedio_dispersión / len(conversations))
+    else:
+        promedio = 0
+        longitud_promedio = 0
+        dispersion_promedio = 0
+
     # Sort conversations by length
     lengths.sort(reverse=True)
 
@@ -385,6 +423,9 @@ def get_statistics():
         "Conversación más corta": min_length,
         "Conversación más larga": max_length,
         "Duración promedio de las conversaciones": avg_length,
+        "Promedio de mensajes": round(promedio, 4),
+        "Longitud promedio de los mensajes": round(longitud_promedio, 4),
+        "Dispersión promedio de los mensajes": round(dispersion_promedio, 4)
     })
 
 
@@ -580,7 +621,7 @@ def generar_datos():
             promedio.append(0)
             longitud_promedio.append(0)
             dispersion_promedio.append(0)
-            
+          
     # Filtrar las columnas cuyo nombre esté entre asteriscos
     columnas_con_asteriscos = [col.strip('*') for col in df.columns if col.startswith('*') and col.endswith('*')]
     
@@ -717,7 +758,7 @@ def entrenar(datos: EntrenamientoRequest):
         caract.append(dict['promedio_mensajes'])
     if 'Longitud promedio de mensajes' in caracteristicas:
         caract.append(dict['longitud_promedio']) 
-    if 'Dispersion de los mensajes' in caracteristicas:
+    if 'Dispersión de los mensajes' in caracteristicas:
         caract.append(dict['dispersion_promedio'])
     if '% Relación con la asignatura' in caracteristicas:
         caract.append(data_global['atributos_results']['relacion'])
@@ -922,7 +963,7 @@ def predecir(datos: PrediccionDatos):
         caract.append(dict['promedio_mensajes'])
     if 'Longitud promedio de mensajes' in caracteristicas:
         caract.append(dict['longitud_promedio']) 
-    if 'Dispersion de los mensajes' in caracteristicas:
+    if 'Dispersión de los mensajes' in caracteristicas:
         caract.append(dict['dispersion_promedio'])
     if '% Relación con la asignatura' in caracteristicas:
         caract.append(data_global['atributos_results']['relacion'])
@@ -1031,17 +1072,11 @@ def analisisIA(asignatura: Asignatura):
         "No des explicaciones adicionales. Asegurate que el formato sea 'x, y', siendo x e y números"
     )
 
-    xlsx_files = list(UPLOAD_EXCEL.glob("*.xlsx"))
-    archivo_excel = xlsx_files[0]
-    if not os.path.exists(archivo_excel):
-        print("El archivo no existe en la ruta especificada.")
-    else:
-        print("El archivo existe. Intentando leer...")
-        df = pd.read_excel(archivo_excel)
-        print("Archivo leído correctamente.")
-    json_column = df['FILENAME']
-    
-    json_names = json_column.dropna().tolist()
+    json_names = []
+    for filename in os.listdir(UPLOAD_PREDICT):
+        if filename.endswith(".json"):
+            json_names.append(filename)
+
     print(json_names)
 
     client = OpenAI(api_key="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")
@@ -1050,9 +1085,9 @@ def analisisIA(asignatura: Asignatura):
     results_IA = []
 
     for jsonn in json_names:
-        path = UPLOAD_DIR / (jsonn + '.json')
+        path = UPLOAD_DIR / jsonn
         aux_conversations = load_conversations(path)
-        json_load = jsonn + ".json"
+        json_load = jsonn
 
         messages = []
         for conversation in aux_conversations:
@@ -1103,7 +1138,6 @@ def analisisIA(asignatura: Asignatura):
         hayResultados = 0
     else:
         hayResultados = 1
-        generar_datos()
                     
     return {"mensaje": f"El análisis para la asignatura '{asignatura}' se ha completado exitosamente."}
 
@@ -1142,20 +1176,13 @@ async def upload_file(file: UploadFile = File(...)):
             elif current_key:
                 data_dict[current_key] += eval(line.strip())
         
-        xlsx_files = list(UPLOAD_EXCEL.glob("*.xlsx"))
-        archivo_excel = xlsx_files[0]
-        if not os.path.exists(archivo_excel):
-            print("El archivo .xlsx no existe en la ruta especificada.")
-        else:
-            print("Leyendo jsons...")
-            df = pd.read_excel(archivo_excel)
-            print("Archivo leído correctamente.")
-        json_column = df['FILENAME']
-    
-        json_names = json_column.dropna().tolist()
+        json_names = []
+        for filename in os.listdir(UPLOAD_DIR):
+            if filename.endswith(".json"):
+                json_names.append(filename)
+
         for jsonn in data_dict['json']:
-            aux = jsonn.replace('.json', '')
-            if aux not in json_names:
+            if jsonn not in json_names:
                 hayResultados = 0
                 print("El archivo seleccionado no pertenece a las conversaciones cargadas.")
                 return JSONResponse(content={"status": "error", "message": "El archivo seleccionado no pertenece a las conversaciones cargadas."}, status_code=400)
@@ -1167,8 +1194,6 @@ async def upload_file(file: UploadFile = File(...)):
 
         print(resultados_IA)
         print(subject)
-
-        generar_datos()
         
         return JSONResponse(content={"status": "success", "data": data_dict})
     else:

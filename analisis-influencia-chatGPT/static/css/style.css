@@ -40,7 +40,13 @@
     text-align: center;
     width: 60%;
     margin: auto;
-    margin-top: 40px;
+    margin-top: 60px;
+    text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.highlight {
+    color: #30a14e; /* Cambia este color al que prefieras para la palabra ChatGPT */
+    font-weight: bold; /* Opcional: puedes hacer que la palabra resalte aún más */
 }
 
 #seleccionar_archivos {
