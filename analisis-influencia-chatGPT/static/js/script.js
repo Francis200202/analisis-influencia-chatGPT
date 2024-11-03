@@ -13,10 +13,30 @@ function pagina_prediccion() {
     window.location.href = '/templates/entrenamiento.html';
 }
 
+//Pagina evaluar
+function openCustomModal(url) {
+    // Agrega el efecto difuminado al fondo
+    document.getElementById('index').classList.add('blur-background-custom');
+
+    // Muestra el overlay y carga la nueva página en el iframe
+    document.getElementById('custom-modal-overlay').style.display = 'flex';
+    document.getElementById('custom-modal-iframe').src = url;
+}
+
+function closeCustomModal() {
+    // Remueve el efecto difuminado del fondo
+    document.getElementById('index').classList.remove('blur-background-custom');
+
+    // Oculta el overlay y limpia el src del iframe
+    document.getElementById('custom-modal-overlay').style.display = 'none';
+    document.getElementById('custom-modal-iframe').src = '';
+}
+
 function ayuda() {
     document.getElementById('help').style.display = 'block';
     document.getElementById('seleccionar_archivos').style.display = 'none';
     document.getElementById("usar-IA").style.display = 'none';
+    document.getElementById("hacer-evaluacion").style.display = 'none';
     document.getElementById('ayuda-link').style.color = '#abebc6';
     document.getElementById('inicio-link').style.color = 'white';
 }
@@ -30,6 +50,7 @@ form.addEventListener('submit', async (event) => {
     const resultDiv = document.getElementById('result');
     const errorDiv = document.getElementById('error');
     const usarIA = document.getElementById('usar-IA');
+    const hacerEval = document.getElementById("hacer-evaluacion");
     const atrCalc = document.getElementById('atrib-calc');
     const atrCarg = document.getElementById('atrib-carg');
 
@@ -58,6 +79,7 @@ form.addEventListener('submit', async (event) => {
             document.getElementById("upload-excel").classList.remove('boton-disabled');
             sessionStorage.setItem('estadisticasEnabled', 'true');
             usarIA.style.display = 'block';
+            hacerEval.style.display = 'block';
             atrCalc.style.display = 'none';
             atrCarg.style.display = 'none';
         } else {
@@ -65,6 +87,7 @@ form.addEventListener('submit', async (event) => {
             errorDiv.style.display = 'block';
             resultDiv.textContent = '';
             usarIA.style.display = 'none';
+            hacerEval.style.display = 'none';
             document.getElementById("estadisticasLink").classList.add("disabled");
             document.getElementById("upload-excel").classList.add('boton-disabled');
             document.getElementById("correlacionLink").classList.add('disabled');
@@ -81,6 +104,7 @@ form.addEventListener('submit', async (event) => {
         errorDiv.style.display = 'block';
         resultDiv.textContent = '';
         usarIA.style.display = 'none';
+        hacerEval.style.display = 'none';
         document.getElementById("estadisticasLink").classList.add("disabled");
         document.getElementById("upload-excel").classList.add('boton-disabled');
         document.getElementById("correlacionLink").classList.add('disabled');
@@ -293,6 +317,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.getElementById("estadisticasLink").classList.remove('disabled');
                 document.getElementById("upload-excel").classList.remove('boton-disabled');
                 document.getElementById("usar-IA").style.display = 'block';
+                document.getElementById("hacer-evaluacion").style.display = 'block';
             } else {
                 // Deshabilitar el enlace si la carpeta está vacía
                 document.getElementById("estadisticasLink").classList.add('disabled');
@@ -301,6 +326,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 sessionStorage.removeItem('corrPredEnabled');
                 document.getElementById("upload-excel").classList.add('boton-disabled');
                 document.getElementById("usar-IA").style.display = 'none';
+                document.getElementById("hacer-evaluacion").style.display = 'none';
             }
 
             // Si UPLOAD_EXCEL esta vacia deshabilitar
