@@ -26,25 +26,42 @@ function handleConversationSelect() {
 
 //Obtener lista de archivos JSON del backend
 async function loadJsonFiles() {
-    fetch("/api/json-files")
-        .then(response => response.json())
-        .then(data => {
-            const jsonFiles = data.json_files;
-            const selectElement = document.getElementById('jsonSelect');
-            //selectElement.innerHTML = '<option value="">Selecciona una conversación...</option>';
-            jsonFiles.forEach(jsonFile => {
-                const option = document.createElement('option');
-                option.value = jsonFile;
-                option.textContent = jsonFile;
-                selectElement.appendChild(option);
-            });
-            // Preseleccionar la primera opción
-            if (jsonFiles.length > 0) {
-                selectElement.value = jsonFiles[0];
-                handleConversationSelect();
+    try {
+        // Obtener la lista de archivos JSON
+        const response = await fetch("/api/json-files");
+        const data = await response.json();
+        const jsonFiles = data.json_files;
+        const selectElement = document.getElementById('jsonSelect');
+
+        // Agregar opciones al select
+        jsonFiles.forEach(jsonFile => {
+            const option = document.createElement('option');
+            option.value = jsonFile;
+            option.textContent = jsonFile;
+            selectElement.appendChild(option);
+        });
+
+        // Verificar el estado de cada archivo
+        const statusResponse = await fetch("/api/json-files-status");
+        const statusData = await statusResponse.json();
+        const statusDict = statusData.status;
+
+        // Aplicar color de fondo si tienen valores guardados
+        jsonFiles.forEach(jsonFile => {
+            const option = document.querySelector(`option[value="${jsonFile}"]`);
+            if (statusDict[jsonFile]) {
+                option.classList.add("bg-green-200"); // Aplica un fondo verde si está guardado
             }
-        })
-        .catch(error => console.error('Error cargando conversacion:', error));
+        });
+
+        // Preseleccionar la primera opción
+        if (jsonFiles.length > 0) {
+            selectElement.value = jsonFiles[0];
+            handleConversationSelect();
+        }
+    } catch (error) {
+        console.error('Error cargando conversacion:', error);
+    }
 }
 
 let selectedConvElem = null;  // Global variable to track selected conversation
@@ -65,6 +82,55 @@ async function loadConversations() {
             conv.classList.add("bg-gray-400");
             selectedConvElem = conv;
         }
+
+        const selectElement = document.getElementById('jsonSelect');
+        const nombre = selectElement.value;
+
+        // Solicitar valores de relación y conocimiento al servidor
+        const valoresResponse = await fetch(`/api/obtener_valor_evaluacion/${nombre}`);
+        const valoresData = await valoresResponse.json();
+
+        // Si el servidor devuelve valores guardados, actualizamos las barras de progreso
+        if (valoresData.relacion !== null && valoresData.conocimiento !== null) {
+            document.getElementById("relationLabel").innerHTML = `% Relación con la asignatura - ${valoresData.relacion}% <span class="material-symbols-outlined icons" style="font-size: 1.15rem;">check_circle</span>`;
+            document.getElementById("relationProgress").value = valoresData.relacion;
+            document.getElementById("relationValue").textContent = `${valoresData.relacion}%`;
+
+            document.getElementById("knowledgeLabel").innerHTML = `% Conocimiento sobre la asignatura - ${valoresData.conocimiento}% <span class="material-symbols-outlined icons" style="font-size: 1.15rem;">check_circle</span>`;
+            document.getElementById("knowledgeProgress").value = valoresData.conocimiento;
+            document.getElementById("knowledgeValue").textContent = `${valoresData.conocimiento}%`;
+
+            // Actualizar icono de estado y texto a "Guardado"
+            document.getElementById("statusIcon").textContent = "check_circle";
+            document.getElementById("statusIcon").classList.remove("text-gray-500");
+            document.getElementById("statusIcon").classList.remove("text-red-500");
+            document.getElementById("statusIcon").classList.add("text-green-500");
+            document.getElementById("statusText").textContent = "Guardado";
+
+            document.getElementById("jsonSelect").classList.add("border-green-200");
+
+            document.getElementById("boton_elim").classList.remove("disabled");
+        } else {
+            // Si no hay valores guardados, establecemos el estado en "No guardado"
+            document.getElementById("relationLabel").textContent = '% Relación con la asignatura';
+            document.getElementById("relationProgress").value = 0;
+            document.getElementById("relationValue").textContent = '0%';
+
+            document.getElementById("knowledgeLabel").textContent = '% Conocimiento sobre la asignatura';
+            document.getElementById("knowledgeProgress").value = 0;
+            document.getElementById("knowledgeValue").textContent = '0%';
+
+            document.getElementById("statusIcon").textContent = "hourglass_empty";
+            document.getElementById("statusIcon").classList.remove("text-green-500");
+            document.getElementById("statusIcon").classList.remove("text-red-500");
+            document.getElementById("statusIcon").classList.add("text-gray-500");
+            document.getElementById("statusText").textContent = "No guardado";
+
+            document.getElementById("jsonSelect").classList.remove("border-green-200");
+
+            document.getElementById("boton_elim").classList.add("disabled");
+        }
+
     } catch (error) {
         console.error("No se pudieron cargar las conversaciones:", error);
     }
@@ -271,6 +337,101 @@ function handleSearchInput(event) {
     const query = encodeURIComponent(document.getElementById("search-input").value);
     if (query)
         searchConversations(query);
+}
+
+async function enviarValores() {
+    // Obtener los valores de los inputs de rango
+    const relacion = document.getElementById("relationProgress").value;
+    const conocimiento = document.getElementById("knowledgeProgress").value;
+    const selectElement = document.getElementById('jsonSelect');
+    const selectedValue = selectElement.value;
+
+    try {
+        const response = await fetch("/api/guardar_valor_evaluacion", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                relacion: parseInt(relacion, 10),
+                conocimiento: parseInt(conocimiento, 10),
+                nombre: selectedValue
+            })
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            // Cambiar el ícono a uno de éxito
+            document.getElementById("statusIcon").innerHTML = "check_circle";
+            document.getElementById("statusIcon").classList.remove("text-gray-500");
+            document.getElementById("statusIcon").classList.remove("text-red-500");
+            document.getElementById("statusIcon").classList.add("text-green-500");
+            document.getElementById("statusText").textContent = "Guardados";
+
+            document.getElementById("relationLabel").innerHTML = `% Relación con la asignatura - ${relacion}% <span class="material-symbols-outlined icons" style="font-size: 1.15rem;">check_circle</span>`;
+            document.getElementById("knowledgeLabel").innerHTML = `% Conocimiento sobre la asignatura - ${conocimiento}% <span class="material-symbols-outlined icons" style="font-size: 1.15rem;">check_circle</span>`;
+
+            document.getElementById("jsonSelect").classList.add("border-green-200");
+
+            const option = document.querySelector(`option[value="${selectedValue}"]`);
+            option.classList.add("bg-green-200");
+
+            document.getElementById("boton_elim").classList.remove("disabled");
+        } else {
+            // Cambiar el ícono a uno de error
+            document.getElementById("statusIcon").innerHTML = "error";
+            document.getElementById("statusIcon").classList.remove("text-gray-500");
+            document.getElementById("statusIcon").classList.remove("text-green-500");
+            document.getElementById("statusIcon").classList.add("text-red-500");
+            document.getElementById("statusText").textContent = "Error al guardar";
+
+            document.getElementById("boton_elim").classList.add("disabled");
+        }
+    } catch (error) {
+        console.error("Error en la solicitud:", error);
+        document.getElementById("statusIcon").innerHTML = "error";
+        document.getElementById("statusIcon").classList.remove("text-gray-500");
+        document.getElementById("statusIcon").classList.remove("text-green-500");
+        document.getElementById("statusIcon").classList.add("text-red-500");
+        document.getElementById("statusText").textContent = "Error en la comunicación";
+
+        document.getElementById("boton_elim").classList.add("disabled");
+    }
+}
+
+
+async function eliminarValores() {
+    try {
+        // Envía una solicitud al servidor para eliminar los valores guardados
+        const response = await fetch('/api/eliminar_valor_evaluacion', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre: document.getElementById('jsonSelect').value })
+        });
+        
+        if (response.ok) {
+            document.getElementById('statusIcon').textContent = 'delete_forever';
+            document.getElementById('statusIcon').classList.remove('text-gray-500');
+            document.getElementById('statusIcon').classList.remove('text-green-500');
+            document.getElementById('statusIcon').classList.add('text-red-500');
+            document.getElementById('statusText').textContent = 'Valores eliminados';
+
+            document.getElementById("relationLabel").textContent = '% Relación con la asignatura';
+            document.getElementById("knowledgeLabel").textContent = '% Conocimiento sobre la asignatura';
+
+            document.getElementById("jsonSelect").classList.remove("border-green-200");
+            const selectElement = document.getElementById('jsonSelect');
+            const selectedValue = selectElement.value;
+            const option = document.querySelector(`option[value="${selectedValue}"]`);
+            option.classList.remove("bg-green-200");
+
+            document.getElementById("boton_elim").classList.add("disabled");
+        } else {
+            throw new Error('Error al eliminar valores');
+        }
+    } catch (error) {
+        console.error('No se pudieron eliminar los valores:', error);
+    }
 }
 
 window.addEventListener('DOMContentLoaded', (event) => {

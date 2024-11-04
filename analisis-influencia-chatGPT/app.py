@@ -59,6 +59,14 @@ UPLOAD_PREDICT = Path("data/files_for_predict")
 app = FastAPI()
 api_app = FastAPI(title="API")
 
+# Variables globales
+evaluacion_dict = {}
+
+class ValoresInput(BaseModel):
+    relacion: int
+    conocimiento: int
+    nombre: str
+
 class EntrenamientoRequest(BaseModel):
     metodo: str
     caracteristicas: List[str]
@@ -75,8 +83,8 @@ class PrediccionDatos(BaseModel):
 class Asignatura(BaseModel):
     asignatura: str
 
-class ArchivoRequest(BaseModel):
-    nombreArchivo: str
+class NombreInput(BaseModel):
+    nombre: str
 
 
 @app.on_event("startup")
@@ -1045,6 +1053,62 @@ def predecir(datos: PrediccionDatos):
         "caracteristicas": datos.caracteristicas,
         "valores": datos.valores 
     }
+
+
+@api_app.get("/obtener_valor_evaluacion/{nombre}")
+async def obtener_valor_evaluacion(nombre: str):
+    global evaluacion_dict
+    if nombre in evaluacion_dict:
+        valores = evaluacion_dict[nombre]
+        return {"relacion": valores["relacion"], "conocimiento": valores["conocimiento"]}
+    else:
+        return {"mensaje": "No se encontraron valores guardados para este usuario", "relacion": None, "conocimiento": None}
+
+
+@api_app.get("/json-files-status")
+async def json_files_status():
+    global evaluacion_dict
+    # Devuelve un diccionario con el estado de guardado de cada archivo
+    status_dict = {name: name in evaluacion_dict for name in evaluacion_dict.keys()}
+    return {"status": status_dict}
+
+
+@api_app.post("/guardar_valor_evaluacion")
+async def guardar_valor_evaluacion(valores: ValoresInput):
+    global evaluacion_dict
+    # Validación de valores
+    if valores.relacion < 0 or valores.conocimiento < 0:
+        raise HTTPException(status_code=400, detail="Valores no válidos")
+
+    # Actualizar o agregar el nombre al diccionario
+    if valores.nombre in evaluacion_dict:
+        # Actualizar valores existentes
+        evaluacion_dict[valores.nombre]['relacion'] = valores.relacion
+        evaluacion_dict[valores.nombre]['conocimiento'] = valores.conocimiento
+    else:
+        # Agregar nuevos valores
+        evaluacion_dict[valores.nombre] = {
+            "relacion": valores.relacion,
+            "conocimiento": valores.conocimiento
+        }
+
+    print(f"Valores guardados: {evaluacion_dict}")
+    return {"mensaje": "Valores recibidos correctamente", "valores": valores}
+
+
+@api_app.delete("/eliminar_valor_evaluacion")
+async def eliminar_valor_evaluacion(nombre_input: NombreInput):
+    global evaluacion_dict
+    nombre = nombre_input.nombre
+
+    # Verificar si el nombre existe en el diccionario
+    if nombre in evaluacion_dict:
+        # Eliminar el nombre del diccionario
+        del evaluacion_dict[nombre]
+        return {"mensaje": f"Valores de '{nombre}' eliminados exitosamente"}
+    else:
+        # Lanzar un error si el nombre no existe en el diccionario
+        raise HTTPException(status_code=404, detail=f"No se encontraron valores para '{nombre}'")
 
 
 # Función para contar tokens, le damos el modelo gpt-3.5-turbo que es compatible en términos de conteo de tokens, aunque el modelo en sí sea diferente

@@ -70,7 +70,7 @@
 
             <!-- % Relación con la asignatura -->
             <div class="mb-4">
-                <label for="relationProgress" class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="relationProgress" class="block text-sm font-medium text-gray-700 mb-1" id="relationLabel">
                     % Relación con la asignatura
                 </label>
                 <div class="relative pt-1">
@@ -82,7 +82,7 @@
 
             <!-- % Conocimiento sobre la asignatura -->
             <div class="mb-4">
-                <label for="knowledgeProgress" class="block text-sm font-medium text-gray-700 mb-1">
+                <label for="knowledgeProgress" class="block text-sm font-medium text-gray-700 mb-1" id="knowledgeLabel">
                     % Conocimiento sobre la asignatura
                 </label>
                 <div class="relative pt-1">
@@ -93,9 +93,18 @@
             </div>
 
             <!-- Botón para enviar -->
-            <div class="mt-4">
-                <button onclick="enviarValores()" class="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-400">
-                    Enviar valores
+            <div class="mt-4 text-center">
+                <!-- Icono de estado -->
+                <div class="text-center">
+                    <span class="material-symbols-outlined icons text-gray-500" id="statusIcon">hourglass_empty</span>
+                    <span class="text-sm text-gray-700 ml-2" id="statusText">No guardado</span>
+                </div>
+                <button onclick="enviarValores()" class="mt-8 px-4 py-2 bg-black text-white rounded-md hover:bg-gray-400">
+                    Guardar valores
+                </button>
+                <!-- Botón para eliminar valores del alumno -->
+                <button onclick="eliminarValores()" class="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-400 disabled" id="boton_elim">
+                    Eliminar valores
                 </button>
             </div>
         </div>
@@ -106,7 +115,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.2.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
     <script>
-        // Función para actualizar el valor mostrado junto a las barras de progreso
+        // Actualizar el valor mostrado junto a las barras de progreso
         const relationInput = document.getElementById("relationProgress");
         const knowledgeInput = document.getElementById("knowledgeProgress");
         const relationValue = document.getElementById("relationValue");
@@ -119,14 +128,6 @@
         knowledgeInput.addEventListener("input", () => {
             knowledgeValue.textContent = `${knowledgeInput.value}%`;
         });
-
-        // Función para enviar los valores al pulsar el botón
-        function enviarValores() {
-            const relacion = relationInput.value;
-            const conocimiento = knowledgeInput.value;
-            console.log("Valores enviados:", { relacion, conocimiento });
-            // Llama aquí a la función de JavaScript que enviará estos valores al servidor o realizará otra acción
-        }
     </script>
 </body>
 
