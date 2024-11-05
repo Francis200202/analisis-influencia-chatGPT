@@ -33,6 +33,7 @@ function handleConversationSelect() {
                 loadActivityStats();
                 loadChatStatistics();
                 loadNotes();
+                loadValorEvaluacion();
                 loadAtribIA();
                 scrollToTop();
 
@@ -310,6 +311,51 @@ async function loadNotes() {
     }
 }
 
+async function loadValorEvaluacion() {
+    try {
+        const response = await fetch('/api/valorEval');
+        const data = await response.json();
+        const tableContainer = document.getElementById('valor_eval');
+
+        // Limpiar estadisticas
+        tableContainer.innerHTML = '';
+
+        // Create table header and rows
+        let tableHTML = `
+            <table class="min-w-full bg-white">
+                <tbody>
+        `;
+
+        if (!data || Object.keys(data).length === 0) {
+            tableHTML += `
+                <p>No se ha evaluado este alumno.</p>
+            `;
+        }else{
+            // Insertar filas de la tabla de los datos obtenidos
+            tableHTML += `
+                <tr>
+                    <td class="py-2 px-4 border-b">Relación con la asignatura</td>
+                    <td class="py-2 px-4 border-b">${data.relacion}%</td>
+                </tr>
+                <tr>
+                    <td class="py-2 px-4 border-b">Conocimiento sobre la asignatura</td>
+                    <td class="py-2 px-4 border-b">${data.conocimiento}%</td>
+                </tr>
+            `;
+        }
+
+        // Close table tags
+        tableHTML += `
+                </tbody>
+            </table>
+        `;
+    
+        tableContainer.insertAdjacentHTML("beforeend", tableHTML);
+    } catch (error) {
+        console.error("Error fetching notes:", error);
+    }
+}
+
 async function loadAtribIA() {
     try {
         const response = await fetch('/api/atributos');
@@ -333,12 +379,12 @@ async function loadAtribIA() {
             // Insertar filas de la tabla de los datos obtenidos
             tableHTML += `
                 <tr>
-                    <td class="py-2 px-4 border-b">% Relación con asignatura</td>
-                    <td class="py-2 px-4 border-b">${data.relacion}</td>
+                    <td class="py-2 px-4 border-b">Relación con la asignatura</td>
+                    <td class="py-2 px-4 border-b">${data.relacion}%</td>
                 </tr>
                 <tr>
-                    <td class="py-2 px-4 border-b">% Conocimiento de la asignatura</td>
-                    <td class="py-2 px-4 border-b">${data.conocimiento}</td>
+                    <td class="py-2 px-4 border-b">Conocimiento sobre la asignatura</td>
+                    <td class="py-2 px-4 border-b">${data.conocimiento}%</td>
                 </tr>
             `;
         }

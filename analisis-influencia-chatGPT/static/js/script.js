@@ -30,6 +30,9 @@ function closeCustomModal() {
     // Oculta el overlay y limpia el src del iframe
     document.getElementById('custom-modal-overlay').style.display = 'none';
     document.getElementById('custom-modal-iframe').src = '';
+
+    // Actualizar numero de alumnos evaluados
+    updateEvaluacionStatus();
 }
 
 function ayuda() {
@@ -82,6 +85,8 @@ form.addEventListener('submit', async (event) => {
             hacerEval.style.display = 'block';
             atrCalc.style.display = 'none';
             atrCarg.style.display = 'none';
+
+            updateEvaluacionStatus();
         } else {
             errorDiv.textContent = 'Error: No se ha encontrado ningun archivo JSON o la estructura del ZIP es incorrecta';
             errorDiv.style.display = 'block';
@@ -164,6 +169,115 @@ form2.addEventListener('submit', async (event) => {
         resultDiv.textContent = '';
     }
 });
+
+async function guardarEvaluacion() {
+    let nombreArchivo = prompt("Por favor, introduce el nombre del archivo (sin extensión):");
+
+    if (!nombreArchivo) {
+        alert("No se proporcionó un nombre de archivo.");
+        return;
+    }
+
+    try {
+        // Solicitar los resultados desde el servidor (suponiendo que se necesita consultar los datos)
+        let response = await fetch('/api/obtenerEvaluacion');
+        let resultados = await response.json();
+
+        if (!response.ok) {
+            alert("Error al obtener los resultados: " + (resultados.detail || "Error desconocido"));
+            return;
+        }
+
+        // Convertir los resultados a texto
+        let contenidoArchivo = '';
+        for (let key in resultados) {
+            contenidoArchivo += `${key}: ${JSON.stringify(resultados[key])}\n`;
+        }
+
+        // Crear un Blob con el contenido
+        let blob = new Blob([contenidoArchivo], { type: 'text/plain;charset=utf-8' });
+
+        // Crear un enlace de descarga
+        let url = window.URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = url;
+        a.download = nombreArchivo;
+        document.body.appendChild(a);
+        a.click();
+
+        // Limpiar
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        alert("Archivo guardado exitosamente.");
+
+    } catch (error) {
+        console.error("Error:", error);
+        alert("Ha ocurrido un error en la comunicación con el servidor.");
+    }
+}
+
+function confirmResetEvaluacion() {
+        const isConfirmed = confirm("¿Estás seguro de que quieres borrar toda la evaluación?");
+        if (isConfirmed) {
+            resetEvaluacion();
+        }
+    }
+
+async function resetEvaluacion() {
+    try {
+        const response = await fetch('/api/reset-evaluacion', {
+            method: 'POST' 
+        });
+        const data = await response.json();
+        document.getElementById("evaluacion-status").textContent = `Evaluaciones eliminadas. Alumnos evaluados: 0 de ${data.totalAlumnos}`;
+    } catch (error) {
+        console.error("Error al eliminar las evaluaciones:", error);
+    }
+}
+
+async function updateEvaluacionStatus() {
+    try {
+        const response = await fetch('/api/estado-evaluacion');
+        const data = await response.json();
+        document.getElementById("evaluacion-status").textContent = `Alumnos evaluados: ${data.alumnosEvaluados} de ${data.totalAlumnos}`;
+    } catch (error) {
+        console.error("Error al obtener el estado de evaluación:", error);
+    }
+}
+
+document.getElementById('fileInput2').addEventListener('change', function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Realizar la petición POST al servidor para procesar el archivo
+            fetch('/api/uploadEvaluacion', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log('Archivo procesado:', data.data);
+
+                    updateEvaluacionStatus();
+                } else {
+                    // Mostrar mensaje de error en caso de fallo
+                    alert('Error: ' + data.message);
+                    console.error('Error al subir el archivo:', data.message);
+                }
+
+                // Resetear el input después de procesar el archivo
+                event.target.value = ''; // Esto permite volver a cargar el mismo archivo
+            })
+            .catch(error => {
+                console.error('Error al subir el archivo:', error);
+                alert('Error de red: No se pudo comunicar con el servidor.');
+            });
+        }
+    });
 
 function infoIA() {
     const modal = document.getElementById('infoModal');
@@ -293,6 +407,9 @@ document.getElementById('fileInput').addEventListener('change', function(event) 
                     alert('Error: ' + data.message);
                     console.error('Error al subir el archivo:', data.message);
                 }
+
+                // Resetear el input después de procesar el archivo
+                event.target.value = ''; // Esto permite volver a cargar el mismo archivo
             })
             .catch(error => {
                 console.error('Error al subir el archivo:', error);
@@ -318,6 +435,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.getElementById("upload-excel").classList.remove('boton-disabled');
                 document.getElementById("usar-IA").style.display = 'block';
                 document.getElementById("hacer-evaluacion").style.display = 'block';
+
+                updateEvaluacionStatus();
             } else {
                 // Deshabilitar el enlace si la carpeta está vacía
                 document.getElementById("estadisticasLink").classList.add('disabled');

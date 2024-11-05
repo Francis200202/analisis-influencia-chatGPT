@@ -134,7 +134,6 @@
 
     .evaluar h1 {
         font-size: 1.5em;
-        margin-top: -40px;
     }
 
     .evaluar p {
@@ -142,7 +141,7 @@
     }
 
     .evaluar button {
-        height: 50px;
+        height: 48px;
         align-content: center;
         text-align: center;
     }
@@ -212,7 +211,7 @@
 }
     .IA h1 {
         font-size: 1.5em;
-        margin-top: -20px;
+        margin-top: -30px;
     }
 
     .IA p {

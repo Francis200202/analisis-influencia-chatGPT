@@ -499,6 +499,25 @@ def get_atributos():
     return atributos_dict
 
 
+@api_app.get("/valorEval")
+def get_valor_evaluacion():
+    global evaluacion_dict
+
+    valores_dict = {}
+    try:
+        if JSON_Selected in evaluacion_dict:
+            valores = evaluacion_dict[JSON_Selected]
+            valores_dict['relacion'] = int(valores["relacion"])
+            valores_dict['conocimiento'] = int(valores["conocimiento"])
+        else:
+            return None
+    except ValueError:
+        print(f"El JSON '{JSON_Selected}' no se encuentra.")
+        return None
+    
+    return valores_dict
+
+
 # Search conversations and messages
 @api_app.get("/search")
 def search_conversations(query: str = Query(..., min_length=3, description="Search query")):
@@ -1053,6 +1072,80 @@ def predecir(datos: PrediccionDatos):
         "caracteristicas": datos.caracteristicas,
         "valores": datos.valores 
     }
+
+
+@api_app.post("/uploadEvaluacion")
+async def upload_file_evaluacion(file: UploadFile = File(...)):
+    global evaluacion_dict
+
+    dictEv = {}
+
+    if file.content_type == 'text/plain':
+        contents = await file.read()
+        # Convertir el contenido del archivo a un string
+        content_str = contents.decode('utf-8')
+        
+        # Procesar el contenido del archivo y guardar en el diccionario
+        for line in content_str.splitlines():
+            if ':' in line:
+                # Separar el nombre del archivo JSON y el diccionario de valores
+                json_filename, valores_str = line.split(':', 1)
+                json_filename = json_filename.strip()
+                
+                # Convertir la cadena de valores a un diccionario
+                try:
+                    valores = eval(valores_str.strip())
+                    # Verificar que contenga las claves esperadas
+                    if 'relacion' in valores and 'conocimiento' in valores:
+                        dictEv[json_filename] = {
+                            "relacion": valores["relacion"],
+                            "conocimiento": valores["conocimiento"]
+                        }
+                    else:
+                        raise ValueError("Faltan claves 'relacion' o 'conocimiento' en el archivo.")
+                except (SyntaxError, ValueError) as e:
+                    return JSONResponse(content={"status": "error", "message": f"Error procesando el archivo: {e}"}, status_code=400)
+
+        # Verificar que los archivos JSON existen en el directorio especificado
+        json_files_in_dir = set([filename for filename in os.listdir(UPLOAD_DIR) if filename.endswith(".json")])
+        missing_files = [json for json in dictEv.keys() if json not in json_files_in_dir]
+        
+        if missing_files:
+            return JSONResponse(content={"status": "error", "message": f"Archivos JSON faltantes: {', '.join(missing_files)}"}, status_code=400)
+
+        evaluacion_dict = dictEv
+        print("Diccionario de evaluaciones:", evaluacion_dict)
+
+        # Devolver una respuesta de éxito
+        return JSONResponse(content={"status": "success", "data": evaluacion_dict})
+    else:
+        return JSONResponse(content={"status": "error", "message": "Tipo de archivo no válido"}, status_code=400)
+
+
+@api_app.get("/obtenerEvaluacion")
+def obtener_resultados():
+    global evaluacion_dict
+    if len(evaluacion_dict) == 0:
+        raise HTTPException(status_code=400, detail="No hay alumnos evaluados")
+
+    return JSONResponse(content=evaluacion_dict)
+
+
+@api_app.post("/reset-evaluacion")
+async def reset_evaluacion():
+    global evaluacion_dict
+    evaluacion_dict.clear()  # Elimina todas las evaluaciones
+    # Contar archivos con extensión .json en UPLOAD_DIR
+    num_archivos_json = len([archivo for archivo in os.listdir(UPLOAD_DIR) if archivo.endswith(".json")])
+    return {"mensaje": "Evaluaciones eliminadas", "totalAlumnos": num_archivos_json}
+
+
+@api_app.get("/estado-evaluacion")
+async def estado_evaluacion():
+    global evaluacion_dict
+    alumnos_evaluados = len(evaluacion_dict)
+    num_archivos_json = len([archivo for archivo in os.listdir(UPLOAD_DIR) if archivo.endswith(".json")])
+    return {"alumnosEvaluados": alumnos_evaluados, "totalAlumnos": num_archivos_json}
 
 
 @api_app.get("/obtener_valor_evaluacion/{nombre}")
