@@ -406,6 +406,8 @@ document.getElementById('fileInput').addEventListener('change', function(event) 
                     // Mostrar mensaje de error en caso de fallo
                     alert('Error: ' + data.message);
                     console.error('Error al subir el archivo:', data.message);
+                    document.getElementById('atrib-carg').style.display = 'none';
+                    document.getElementById('atrib-calc').style.display = 'none';
                 }
 
                 // Resetear el input después de procesar el archivo
@@ -414,6 +416,8 @@ document.getElementById('fileInput').addEventListener('change', function(event) 
             .catch(error => {
                 console.error('Error al subir el archivo:', error);
                 alert('Error de red: No se pudo comunicar con el servidor.');
+                document.getElementById('atrib-carg').style.display = 'none';
+                document.getElementById('atrib-calc').style.display = 'none';
             });
         }
     });

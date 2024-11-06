@@ -419,6 +419,14 @@
     margin: 0 auto;
 }
 
+.eval-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px; /* Espacio entre columnas */
+    max-width: 95%;
+    margin: 0 auto;
+}
+
 .atrib-container {
     display: grid;
     grid-template-columns: 1fr 1fr;

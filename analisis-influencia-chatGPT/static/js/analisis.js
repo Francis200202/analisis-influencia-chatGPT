@@ -27,6 +27,7 @@ async function analisis() {
         const cc_pm = data.cc_pm;
         const cc_lp = data.cc_lp;
         const cc_dp = data.cc_dp;
+        const hayAlumnosEvaluados = data.hayEvaluacion;
         const hayAtributosCalculados = data.hayResultados;
 
         // Promedio del numero de mensajes
@@ -230,8 +231,154 @@ async function analisis() {
             });
         });
 
-        if (hayAtributosCalculados == 1) {
+        if (hayAlumnosEvaluados == 1) {
             document.getElementById('container2').style.display = 'block';
+            const json_Eval = data.evaluacion_results['json'];
+            const notas_Eval = data.evaluacion_results['nota'];
+            const relacion_Eval = data.evaluacion_results['relacion'];
+            const conocimiento_Eval = data.evaluacion_results['conocimiento'];
+            const cc_r_e = data.cc_r_e;
+            const cc_c_e = data.cc_c_e;
+
+            // % de relación de las conversaciones con la asignatura
+            const chartsContainer4 = document.getElementById('charts-container-4');
+
+            Object.keys(notas_Eval).forEach((columna, index) => {
+                const nota = notas_Eval[columna];
+                const correlation = cc_r_e[index]
+                const dataArray = [];
+                for (let i = 0; i < relacion_Eval.length; i++) {
+                    dataArray.push({
+                        x: relacion_Eval[i],
+                        y: nota[i] // Nota
+                    });
+                }
+
+                const chartWrapper = document.createElement('div');
+                chartWrapper.className = 'chart-wrapper';
+                const chartCanvas = document.createElement('canvas');
+                chartWrapper.appendChild(chartCanvas);
+                chartsContainer4.appendChild(chartWrapper);
+
+                const cc = document.createElement('p');
+                cc.className = 'correlation';
+                cc.textContent = 'Coeficiente de correlación: ' + correlation;
+                chartsContainer4.appendChild(cc);
+
+                // Crear la gráfica utilizando Chart.js
+                new Chart(chartCanvas.getContext('2d'), {
+                    type: 'scatter',
+                    data: {
+                        labels: json_Eval,
+                        datasets: [{
+                            label: `${columna}`,
+                            data: dataArray,
+                            backgroundColor: 'rgba(255, 99, 132, 0.5)', // Color del punto
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: `Gráfico de Correlación (${columna}/% relación)`
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'linear',
+                                position: 'bottom',
+                                title: {
+                                    display: true,
+                                    text: '% relación con asignatura'
+                                }
+                            },
+                            y: {
+                                type: 'linear',
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Nota'
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+
+            //% de conocimiento sobre la asignatura
+            const chartsContainer5 = document.getElementById('charts-container-5');
+
+            Object.keys(notas_Eval).forEach((columna, index) => {
+                const nota = notas_Eval[columna];
+                const correlation = cc_c_e[index];
+                const dataArray = [];
+                for (let i = 0; i < conocimiento_Eval.length; i++) {
+                    dataArray.push({
+                        x: conocimiento_Eval[i],
+                        y: nota[i] // Nota
+                    });
+                }
+
+                const chartWrapper = document.createElement('div');
+                chartWrapper.className = 'chart-wrapper';
+                const chartCanvas = document.createElement('canvas');
+                chartWrapper.appendChild(chartCanvas);
+                chartsContainer5.appendChild(chartWrapper);
+
+                const cc = document.createElement('p');
+                cc.className = 'correlation';
+                cc.textContent = 'Coeficiente de correlación: ' + correlation;
+                chartsContainer5.appendChild(cc);
+
+                // Crear la gráfica utilizando Chart.js
+                new Chart(chartCanvas.getContext('2d'), {
+                    type: 'scatter',
+                    data: {
+                        labels: json_Eval,
+                        datasets: [{
+                            label: `${columna}`,
+                            data: dataArray,
+                            backgroundColor: 'rgba(255, 99, 132, 0.5)', // Color del punto
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: `Gráfico de Correlación (${columna}/% conocimiento)`
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'linear',
+                                position: 'bottom',
+                                title: {
+                                    display: true,
+                                    text: '% conocimiento sobre la asignatura'
+                                }
+                            },
+                            y: {
+                                type: 'linear',
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Nota'
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+        }else{
+            document.getElementById('container2').style.display = 'none';
+        }
+
+        if (hayAtributosCalculados == 1) {
+            document.getElementById('container3').style.display = 'block';
             const json_Atrib = data.atributos_results['json'];
             const notas_Atrib = data.atributos_results['nota'];
             const relacion_Atrib = data.atributos_results['relacion'];
@@ -240,7 +387,7 @@ async function analisis() {
             const cc_c = data.cc_c;
 
             // % de relación de las conversaciones con la asignatura
-            const chartsContainer4 = document.getElementById('charts-container-4');
+            const chartsContainer6 = document.getElementById('charts-container-6');
 
             Object.keys(notas_Atrib).forEach((columna, index) => {
                 const nota = notas_Atrib[columna];
@@ -257,12 +404,12 @@ async function analisis() {
                 chartWrapper.className = 'chart-wrapper';
                 const chartCanvas = document.createElement('canvas');
                 chartWrapper.appendChild(chartCanvas);
-                chartsContainer4.appendChild(chartWrapper);
+                chartsContainer6.appendChild(chartWrapper);
 
                 const cc = document.createElement('p');
                 cc.className = 'correlation';
                 cc.textContent = 'Coeficiente de correlación: ' + correlation;
-                chartsContainer4.appendChild(cc);
+                chartsContainer6.appendChild(cc);
 
                 // Crear la gráfica utilizando Chart.js
                 new Chart(chartCanvas.getContext('2d'), {
@@ -307,7 +454,7 @@ async function analisis() {
             });
 
             //% de conocimiento sobre la asignatura
-            const chartsContainer5 = document.getElementById('charts-container-5');
+            const chartsContainer7 = document.getElementById('charts-container-7');
 
             Object.keys(notas_Atrib).forEach((columna, index) => {
                 const nota = notas_Atrib[columna];
@@ -324,12 +471,12 @@ async function analisis() {
                 chartWrapper.className = 'chart-wrapper';
                 const chartCanvas = document.createElement('canvas');
                 chartWrapper.appendChild(chartCanvas);
-                chartsContainer5.appendChild(chartWrapper);
+                chartsContainer7.appendChild(chartWrapper);
 
                 const cc = document.createElement('p');
                 cc.className = 'correlation';
                 cc.textContent = 'Coeficiente de correlación: ' + correlation;
-                chartsContainer5.appendChild(cc);
+                chartsContainer7.appendChild(cc);
 
                 // Crear la gráfica utilizando Chart.js
                 new Chart(chartCanvas.getContext('2d'), {
@@ -357,7 +504,7 @@ async function analisis() {
                                 position: 'bottom',
                                 title: {
                                     display: true,
-                                    text: '% conocimiento de la asignatura'
+                                    text: '% conocimiento sobre la asignatura'
                                 }
                             },
                             y: {
@@ -373,7 +520,7 @@ async function analisis() {
                 });
             });
         }else{
-            document.getElementById('container2').style.display = 'none';
+            document.getElementById('container3').style.display = 'none';
         }
 
     })

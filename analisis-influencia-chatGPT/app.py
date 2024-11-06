@@ -29,6 +29,8 @@ from llms import load_create_embeddings, search_similar, TYPE_CONVERSATION, TYPE
 from pydantic import BaseModel
 from typing import List
 
+from collections import OrderedDict
+
 import logging
 
 import time
@@ -587,6 +589,7 @@ def generar_datos():
     global data_global
     global hayResultados
     global resultados_IA
+    global evaluacion_dict
 
     promedio = []
     longitud_promedio = []
@@ -668,14 +671,107 @@ def generar_datos():
         df = pd.DataFrame(data)
 
         string_columnas.append(columna)
-        
-        correlation_coefficient_promedio_mensajes.append(df['promedio_mensajes'].corr(df['nota']))
-        correlation_coefficient_longitud_promedio.append(df['longitud_promedio'].corr(df['nota']))
-        correlation_coefficient_dispersion_promedio.append(df['dispersion_promedio'].corr(df['nota']))
+
+        # Verificar que no se obtiene el valor invalido Nan
+        aux = df['promedio_mensajes'].corr(df['nota'])
+        if np.isnan(aux):
+            correlation_coefficient_promedio_mensajes.append('null')
+        else:
+            correlation_coefficient_promedio_mensajes.append(aux)
+
+        aux = df['longitud_promedio'].corr(df['nota'])
+        if np.isnan(aux):
+            correlation_coefficient_longitud_promedio.append('null')
+        else:
+            correlation_coefficient_longitud_promedio.append(aux)
+
+        aux = df['dispersion_promedio'].corr(df['nota'])
+        if np.isnan(aux):
+            correlation_coefficient_dispersion_promedio.append('null')
+        else:
+            correlation_coefficient_dispersion_promedio.append(aux)
+    
+
+    hayEvaluacion = 0
+    if len(evaluacion_dict) > 0:
+        hayEvaluacion = 1
+        dict_json_notas = {"filename":json_files, "nota":vectores_notas}
+        eval_dict = {'json': [], 'relacion': [], 'conocimiento': []}
+
+        evaluacion_dict_ordenado = OrderedDict(
+            (nombre, evaluacion_dict[nombre]) for nombre in json_files if nombre in evaluacion_dict
+        )
+
+        evaluacion_dict = evaluacion_dict_ordenado
+
+        # Añadir las notas a los alumnos que tienen los atributos calculados
+        dict_evaluacion_con_notas = {
+                'json': [],
+                'relacion': [],
+                'conocimiento': [],
+                'nota': {col: [] for col in columnas_con_asteriscos}
+        }
+        for nombre_json, valores in evaluacion_dict.items():
+            if nombre_json in dict_json_notas['filename']:
+                # Obtener el índice del json_file en dict_json_notas
+                index = dict_json_notas['filename'].index(nombre_json)
+
+                # Agregar los valores correspondientes a dict_evaluacion_con_notas
+                dict_evaluacion_con_notas['json'].append(nombre_json)
+                dict_evaluacion_con_notas['relacion'].append(valores['relacion'])
+                dict_evaluacion_con_notas['conocimiento'].append(valores['conocimiento'])
+                for col in columnas_con_asteriscos:
+                    dict_evaluacion_con_notas['nota'][col].append(dict_json_notas['nota'][col][index])
+
+        correlation_coefficient_relacion_eval = []
+        correlation_coefficient_conocimiento_eval = []
+
+        df = pd.DataFrame({
+                'json': dict_evaluacion_con_notas['json'],
+                'relacion': dict_evaluacion_con_notas['relacion'],
+                'conocimiento': dict_evaluacion_con_notas['conocimiento']
+            })
+
+        for columna, notas in dict_evaluacion_con_notas['nota'].items():
+            df[columna] = notas    
+
+            # Calcular los coeficientes de correlación
+            # Verificar que no se obtiene el valor invalido Nan
+            aux = df['relacion'].corr(df[columna])
+            if np.isnan(aux):
+                correlation_coefficient_relacion_eval.append('null')
+            else:
+                correlation_coefficient_relacion_eval.append(aux)
+
+            aux = df['conocimiento'].corr(df[columna])
+            if np.isnan(aux):
+                correlation_coefficient_conocimiento_eval.append('null')
+            else:
+                correlation_coefficient_conocimiento_eval.append(aux)
+
+        if hayResultados == 0:
+            datos = {"filename":json_files, "promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio":dispersion_promedio, "nota":vectores_notas, "cc_pm":correlation_coefficient_promedio_mensajes, "cc_lp":correlation_coefficient_longitud_promedio, "cc_dp": correlation_coefficient_dispersion_promedio, "evaluacion_results": dict_evaluacion_con_notas, "hayEvaluacion":hayEvaluacion, "hayResultados":hayResultados, 'cc_r_e': correlation_coefficient_relacion_eval, 'cc_c_e': correlation_coefficient_conocimiento_eval}
+            data_global = {"filename":json_files, "promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio":dispersion_promedio, "nota":vectores_notas, "evaluacion_results": dict_evaluacion_con_notas, "hayEvaluacion":hayEvaluacion, "hayResultados":hayResultados}
 
     if hayResultados == 1:
         dict_json_notas = {"filename":json_files, "nota":vectores_notas}
         atributos_dict = {'json': [], 'relacion': [], 'conocimiento': []}
+
+        json_ordenado = []
+        IA_ordenado = []
+
+        for nombre in json_files:
+            if nombre in resultados_IA["json"]:
+                index = resultados_IA["json"].index(nombre)
+                json_ordenado.append(resultados_IA["json"][index])
+                IA_ordenado.append(resultados_IA["IA"][index])
+
+        resultados_IA = {
+            "json": json_ordenado,
+            "IA": IA_ordenado
+        }
+
+ 
 
         for i in range(len(resultados_IA['json'])):
             json_file = resultados_IA['json'][i]
@@ -717,22 +813,35 @@ def generar_datos():
                 'conocimiento': dict_atributos_con_notas['conocimiento']
             })
 
-        print(dict_atributos_con_notas)
-
         for columna, notas in dict_atributos_con_notas['nota'].items():
             df[columna] = notas    
 
             # Calcular los coeficientes de correlación
-            correlation_coefficient_relacion.append(df['relacion'].corr(df[columna]))
-            correlation_coefficient_conocimiento.append(df['conocimiento'].corr(df[columna]))
+            # Verificar que no se obtiene el valor invalido Nan
+            aux = df['relacion'].corr(df[columna])
+            if np.isnan(aux):
+                correlation_coefficient_relacion.append('null')
+            else:
+                correlation_coefficient_relacion.append(aux)
 
+            aux = df['conocimiento'].corr(df[columna])
+            if np.isnan(aux):
+                correlation_coefficient_conocimiento.append('null')
+            else:
+                correlation_coefficient_conocimiento.append(aux)
 
-        datos = {"filename":json_files, "promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio":dispersion_promedio, "nota":vectores_notas, "cc_pm":correlation_coefficient_promedio_mensajes, "cc_lp":correlation_coefficient_longitud_promedio, "cc_dp": correlation_coefficient_dispersion_promedio, "atributos_results": dict_atributos_con_notas, "hayResultados":hayResultados, 'cc_r': correlation_coefficient_relacion, 'cc_c': correlation_coefficient_conocimiento}
-        data_global = {"filename":json_files, "promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio":dispersion_promedio, "nota":vectores_notas, "atributos_results": dict_atributos_con_notas, "hayResultados":hayResultados}
-    else:
-        datos = {"filename":json_files, "promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio":dispersion_promedio, "nota":vectores_notas, "cc_pm":correlation_coefficient_promedio_mensajes, "cc_lp":correlation_coefficient_longitud_promedio, "cc_dp": correlation_coefficient_dispersion_promedio, "hayResultados":hayResultados}
-        data_global = {"filename":json_files, "promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio":dispersion_promedio, "nota":vectores_notas, "hayResultados":hayResultados}
-    
+        if hayEvaluacion == 0:
+            datos = {"filename":json_files, "promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio":dispersion_promedio, "nota":vectores_notas, "cc_pm":correlation_coefficient_promedio_mensajes, "cc_lp":correlation_coefficient_longitud_promedio, "cc_dp": correlation_coefficient_dispersion_promedio, "hayEvaluacion":hayEvaluacion, "atributos_results": dict_atributos_con_notas, "hayResultados":hayResultados, 'cc_r': correlation_coefficient_relacion, 'cc_c': correlation_coefficient_conocimiento}
+            data_global = {"filename":json_files, "promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio":dispersion_promedio, "nota":vectores_notas, "hayEvaluacion":hayEvaluacion, "atributos_results": dict_atributos_con_notas, "hayResultados":hayResultados}
+
+    if hayEvaluacion == 1 and hayResultados == 1:
+        datos = {"filename":json_files, "promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio":dispersion_promedio, "nota":vectores_notas, "cc_pm":correlation_coefficient_promedio_mensajes, "cc_lp":correlation_coefficient_longitud_promedio, "cc_dp": correlation_coefficient_dispersion_promedio, "evaluacion_results": dict_evaluacion_con_notas, "hayEvaluacion":hayEvaluacion, 'cc_r_e': correlation_coefficient_relacion_eval, 'cc_c_e': correlation_coefficient_conocimiento_eval, "atributos_results": dict_atributos_con_notas, "hayResultados":hayResultados, 'cc_r': correlation_coefficient_relacion, 'cc_c': correlation_coefficient_conocimiento}
+        data_global = {"filename":json_files, "promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio":dispersion_promedio, "nota":vectores_notas, "evaluacion_results":dict_evaluacion_con_notas, "hayEvaluacion":hayEvaluacion, "atributos_results": dict_atributos_con_notas, "hayResultados":hayResultados}
+
+    if hayEvaluacion == 0 and hayResultados == 0:
+        datos = {"filename":json_files, "promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio":dispersion_promedio, "nota":vectores_notas, "cc_pm":correlation_coefficient_promedio_mensajes, "cc_lp":correlation_coefficient_longitud_promedio, "cc_dp": correlation_coefficient_dispersion_promedio, "hayEvaluacion":hayEvaluacion, "hayResultados":hayResultados}
+        data_global = {"filename":json_files, "promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio":dispersion_promedio, "nota":vectores_notas, "hayEvaluacion":hayEvaluacion, "hayResultados":hayResultados}
+    print('\n\nDatos: ', datos)
     return JSONResponse(content=datos)
 
 
