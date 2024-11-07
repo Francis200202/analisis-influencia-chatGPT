@@ -130,7 +130,7 @@ function mostrarFormularioPrediccion(caracteristicas, metodo, etiqueta, porcenta
 
     // Verificar si hay que calcular caracteristicas mediante ia
     const necesitaValoresIA = caracteristicasArray.some(caracteristica => 
-        caracteristica === '% Relación con la asignatura' || caracteristica === '% Conocimiento sobre la asignatura'
+        caracteristica === '(IA) - % Relación con la asignatura' || caracteristica === '(IA) - % Conocimiento sobre la asignatura'
     );
 
     // Comprobar si el objeto no está vacío
@@ -293,9 +293,9 @@ async function realizarPrediccion() {
                 valores.push(datosAlumnosParaPredecir.longitud_promedio[i]);
             } else if (caracteristica === "Dispersión de los mensajes") {
                 valores.push(datosAlumnosParaPredecir.dispersion_promedio[i]);
-            } else if (caracteristica === "% Relación con la asignatura") {
+            } else if (caracteristica === "(IA) - % Relación con la asignatura") {
                 valores.push(datosAlumnosParaPredecir.relacion[i]);
-            } else if (caracteristica === "% Conocimiento sobre la asignatura") {
+            } else if (caracteristica === "(IA) - % Conocimiento sobre la asignatura") {
                 valores.push(datosAlumnosParaPredecir.conocimiento[i]);
             }
         });

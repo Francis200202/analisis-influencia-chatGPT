@@ -143,11 +143,6 @@ form2.addEventListener('submit', async (event) => {
             errorDiv.style.display = 'none';
             errorDiv.textContent = '';
 
-            
-            fetch('/api/generar_datos')
-                .catch(error => console.error('Error al ejecutar la función:', error));
-            
-
         } else {
             const error = await response.json();
             errorDiv.textContent = `Error: ${error.detail}`;

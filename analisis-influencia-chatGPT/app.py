@@ -848,11 +848,22 @@ def generar_datos():
 @api_app.get("/obtener_caracteristicas")
 def obtener_caracteristicas():
     global hayResultados
+    global evaluacion_dict
 
-    if hayResultados == 1:
-        datos = {"caracteristicas": ['% Relación con la asignatura', '% Conocimiento sobre la asignatura'], "etiquetas": string_columnas, "hayResultados": hayResultados}
+    generar_datos()
+
+    hayEvaluacion = 0
+    if len(evaluacion_dict) > 0:
+        hayEvaluacion = 1
+
+    if hayResultados == 1 and hayEvaluacion == 0:
+        datos = {"caracteristicas": ['(IA) - % Relación con la asignatura', '(IA) - % Conocimiento sobre la asignatura'], "etiquetas": string_columnas, "hayEvaluacion":hayEvaluacion, "hayResultados": hayResultados}
+    elif hayResultados == 0 and hayEvaluacion == 1:
+        datos = {"caracteristicas": ['% Relación con la asignatura', '% Conocimiento sobre la asignatura'], "etiquetas": string_columnas, "hayEvaluacion":hayEvaluacion, "hayResultados": hayResultados}
+    elif hayResultados == 1 and hayEvaluacion == 1:
+        datos = {"caracteristicas": ['% Relación con la asignatura', '% Conocimiento sobre la asignatura', '(IA) - % Relación con la asignatura', '(IA) - % Conocimiento sobre la asignatura'], "etiquetas": string_columnas, "hayEvaluacion":hayEvaluacion, "hayResultados": hayResultados}
     else:
-        datos = {"etiquetas": string_columnas, "hayResultados": hayResultados}
+        datos = {"etiquetas": string_columnas, "hayEvaluacion":hayEvaluacion, "hayResultados": hayResultados}
      
     return JSONResponse(content=datos)
 
@@ -874,22 +885,72 @@ def entrenar(datos: EntrenamientoRequest):
     }
     
     print(porcentaje_test)
-    # Los vectores deben tener el mismo número de elementos
-    if '% Relación con la asignatura' in caracteristicas or '% Conocimiento sobre la asignatura' in caracteristicas:
-        # Hay que eliminar los indices correspondientes a los alumnos que no tienen atributos calculados por superar el limite de tokens
-        json_1 = set(dict['filename'])
-        json_2 = set(data_global['atributos_results']['json'])
-        json_to_remove = json_1 - json_2
 
-        indices_to_remove = [dict['filename'].index(json_file) for json_file in json_to_remove]
+    relacion = []
+    conocimiento = []
+    relacionIA = []
+    conocimientoIA = []
+    if ('% Relación con la asignatura' in caracteristicas or '% Conocimiento sobre la asignatura' in caracteristicas) and ('(IA) - % Relación con la asignatura' in caracteristicas or '(IA) - % Conocimiento sobre la asignatura' in caracteristicas):
+        # Listas de archivos en evaluación y atributos
+        archivos_evaluacion = set(data_global['evaluacion_results']['json'])
+        archivos_atributos = set(data_global['atributos_results']['json'])
+
+        # Determinamos los archivos en común
+        archivos_comunes = archivos_evaluacion.intersection(archivos_atributos)
+
+        # Filtrar 'filename' para obtener solo archivos en común
+        indices_comunes = [i for i, filename in enumerate(dict['filename']) if filename in archivos_comunes]
+
+        # Filtramos los datos en `dict` usando solo los índices comunes
+        for key in dict.keys():
+            if key != 'nota':  # Para las claves que no son 'nota'
+                dict[key] = [value for i, value in enumerate(dict[key]) if i in indices_comunes]
+            else:  # Para la clave 'nota' que contiene sublistas
+                for subkey in dict['nota']:
+                    dict['nota'][subkey] = [value for i, value in enumerate(dict['nota'][subkey]) if i in indices_comunes]
+        
+        relacion = [data_global['evaluacion_results']['relacion'][i] for i in indices_comunes]
+        conocimiento = [data_global['evaluacion_results']['conocimiento'][i] for i in indices_comunes]
+        relacionIA = [data_global['atributos_results']['relacion'][i] for i in indices_comunes]
+        conocimientoIA = [data_global['atributos_results']['conocimiento'][i] for i in indices_comunes]
+
+
+
+    # Los vectores deben tener el mismo número de elementos
+    elif '% Relación con la asignatura' in caracteristicas or '% Conocimiento sobre la asignatura' in caracteristicas:
+        # Hay que eliminar los indices correspondientes a los alumnos que no han sido evaluados
+        archivos_comunes = set(data_global['evaluacion_results']['json'])
+
+        # Filtrar 'filename' para obtener solo archivos en común
+        indices_comunes = [i for i, filename in enumerate(dict['filename']) if filename in archivos_comunes]
 
         for key in dict.keys():
             if key != 'nota':  # Para las claves que no son 'nota'
-                dict[key] = [value for i, value in enumerate(dict[key]) if i not in indices_to_remove]
+                dict[key] = [value for i, value in enumerate(dict[key]) if i in indices_comunes]
             else:  # Para la clave 'nota' que contiene sublistas
                 for subkey in dict['nota']:
-                    dict['nota'][subkey] = [value for i, value in enumerate(dict['nota'][subkey]) if i not in indices_to_remove]
+                    dict['nota'][subkey] = [value for i, value in enumerate(dict['nota'][subkey]) if i in indices_comunes]
     
+        relacion = data_global['evaluacion_results']['relacion']
+        conocimiento = data_global['evaluacion_results']['conocimiento']
+
+    elif '(IA) - % Relación con la asignatura' in caracteristicas or '(IA) - % Conocimiento sobre la asignatura' in caracteristicas:
+        # Hay que eliminar los indices correspondientes a los alumnos que no tienen atributos calculados por superar el limite de tokens
+        archivos_comunes = set(data_global['atributos_results']['json'])
+
+        # Filtrar 'filename' para obtener solo archivos en común
+        indices_comunes = [i for i, filename in enumerate(dict['filename']) if filename in archivos_comunes]
+
+        for key in dict.keys():
+            if key != 'nota':  # Para las claves que no son 'nota'
+                dict[key] = [value for i, value in enumerate(dict[key]) if i in indices_comunes]
+            else:  # Para la clave 'nota' que contiene sublistas
+                for subkey in dict['nota']:
+                    dict['nota'][subkey] = [value for i, value in enumerate(dict['nota'][subkey]) if i in indices_comunes]
+    
+        relacionIA = data_global['atributos_results']['relacion']
+        conocimientoIA = data_global['atributos_results']['conocimiento']
+
     if 'Promedio de mensajes' in caracteristicas:
         caract.append(dict['promedio_mensajes'])
     if 'Longitud promedio de mensajes' in caracteristicas:
@@ -897,9 +958,13 @@ def entrenar(datos: EntrenamientoRequest):
     if 'Dispersión de los mensajes' in caracteristicas:
         caract.append(dict['dispersion_promedio'])
     if '% Relación con la asignatura' in caracteristicas:
-        caract.append(data_global['atributos_results']['relacion'])
+        caract.append(relacion)
     if '% Conocimiento sobre la asignatura' in caracteristicas:
-        caract.append(data_global['atributos_results']['conocimiento'])
+        caract.append(conocimiento)
+    if '(IA) - % Relación con la asignatura' in caracteristicas:
+        caract.append(relacionIA)
+    if '(IA) - % Conocimiento sobre la asignatura' in caracteristicas:
+        caract.append(conocimientoIA)
         
     #for columna in dict['nota']:
         #if columna in caracteristicas:
@@ -1079,22 +1144,71 @@ def predecir(datos: PrediccionDatos):
             'nota': {k: v[:] for k, v in data_global['nota'].items()} 
     }
     
-    # Los vectores deben tener el mismo número de elementos
-    if '% Relación con la asignatura' in caracteristicas or '% Conocimiento sobre la asignatura' in caracteristicas:
-        # Hay que eliminar los indices correspondientes a los alumnos que no tienen atributos calculados por superar el limite de tokens
-        json_1 = set(dict['filename'])
-        json_2 = set(data_global['atributos_results']['json'])
-        json_to_remove = json_1 - json_2
+    relacion = []
+    conocimiento = []
+    relacionIA = []
+    conocimientoIA = []
+    if ('% Relación con la asignatura' in caracteristicas or '% Conocimiento sobre la asignatura' in caracteristicas) and ('(IA) - % Relación con la asignatura' in caracteristicas or '(IA) - % Conocimiento sobre la asignatura' in caracteristicas):
+        # Listas de archivos en evaluación y atributos
+        archivos_evaluacion = set(data_global['evaluacion_results']['json'])
+        archivos_atributos = set(data_global['atributos_results']['json'])
 
-        indices_to_remove = [dict['filename'].index(json_file) for json_file in json_to_remove]
+        # Determinamos los archivos en común
+        archivos_comunes = archivos_evaluacion.intersection(archivos_atributos)
+
+        # Filtrar 'filename' para obtener solo archivos en común
+        indices_comunes = [i for i, filename in enumerate(dict['filename']) if filename in archivos_comunes]
+
+        # Filtramos los datos en `dict` usando solo los índices comunes
+        for key in dict.keys():
+            if key != 'nota':  # Para las claves que no son 'nota'
+                dict[key] = [value for i, value in enumerate(dict[key]) if i in indices_comunes]
+            else:  # Para la clave 'nota' que contiene sublistas
+                for subkey in dict['nota']:
+                    dict['nota'][subkey] = [value for i, value in enumerate(dict['nota'][subkey]) if i in indices_comunes]
+        
+        relacion = [data_global['evaluacion_results']['relacion'][i] for i in indices_comunes]
+        conocimiento = [data_global['evaluacion_results']['conocimiento'][i] for i in indices_comunes]
+        relacionIA = [data_global['atributos_results']['relacion'][i] for i in indices_comunes]
+        conocimientoIA = [data_global['atributos_results']['conocimiento'][i] for i in indices_comunes]
+
+
+
+    # Los vectores deben tener el mismo número de elementos
+    elif '% Relación con la asignatura' in caracteristicas or '% Conocimiento sobre la asignatura' in caracteristicas:
+        # Hay que eliminar los indices correspondientes a los alumnos que no han sido evaluados
+        archivos_comunes = set(data_global['evaluacion_results']['json'])
+
+        # Filtrar 'filename' para obtener solo archivos en común
+        indices_comunes = [i for i, filename in enumerate(dict['filename']) if filename in archivos_comunes]
 
         for key in dict.keys():
             if key != 'nota':  # Para las claves que no son 'nota'
-                dict[key] = [value for i, value in enumerate(dict[key]) if i not in indices_to_remove]
+                dict[key] = [value for i, value in enumerate(dict[key]) if i in indices_comunes]
             else:  # Para la clave 'nota' que contiene sublistas
                 for subkey in dict['nota']:
-                    dict['nota'][subkey] = [value for i, value in enumerate(dict['nota'][subkey]) if i not in indices_to_remove]
+                    dict['nota'][subkey] = [value for i, value in enumerate(dict['nota'][subkey]) if i in indices_comunes]
     
+        relacion = data_global['evaluacion_results']['relacion']
+        conocimiento = data_global['evaluacion_results']['conocimiento']
+
+    elif '(IA) - % Relación con la asignatura' in caracteristicas or '(IA) - % Conocimiento sobre la asignatura' in caracteristicas:
+        # Hay que eliminar los indices correspondientes a los alumnos que no tienen atributos calculados por superar el limite de tokens
+        archivos_comunes = set(data_global['atributos_results']['json'])
+
+        # Filtrar 'filename' para obtener solo archivos en común
+        indices_comunes = [i for i, filename in enumerate(dict['filename']) if filename in archivos_comunes]
+
+        for key in dict.keys():
+            if key != 'nota':  # Para las claves que no son 'nota'
+                dict[key] = [value for i, value in enumerate(dict[key]) if i in indices_comunes]
+            else:  # Para la clave 'nota' que contiene sublistas
+                for subkey in dict['nota']:
+                    dict['nota'][subkey] = [value for i, value in enumerate(dict['nota'][subkey]) if i in indices_comunes]
+    
+        relacionIA = data_global['atributos_results']['relacion']
+        conocimientoIA = data_global['atributos_results']['conocimiento']
+
     if 'Promedio de mensajes' in caracteristicas:
         caract.append(dict['promedio_mensajes'])
     if 'Longitud promedio de mensajes' in caracteristicas:
@@ -1102,9 +1216,13 @@ def predecir(datos: PrediccionDatos):
     if 'Dispersión de los mensajes' in caracteristicas:
         caract.append(dict['dispersion_promedio'])
     if '% Relación con la asignatura' in caracteristicas:
-        caract.append(data_global['atributos_results']['relacion'])
+        caract.append(relacion)
     if '% Conocimiento sobre la asignatura' in caracteristicas:
-        caract.append(data_global['atributos_results']['conocimiento'])
+        caract.append(conocimiento)
+    if '(IA) - % Relación con la asignatura' in caracteristicas:
+        caract.append(relacionIA)
+    if '(IA) - % Conocimiento sobre la asignatura' in caracteristicas:
+        caract.append(conocimientoIA)
         
     #for columna in dict['nota']:
         #if columna in caracteristicas:
