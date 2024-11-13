@@ -17,7 +17,7 @@ async function caracteristicas() {
         .then(response => response.json())
         .then(data => {
             console.log(data);
-            if(data.hayResultados == 1){
+            if(data.hayResultados == 1 || data.hayEvaluacion == 1){
                 const selectCaracteristicas = data.caracteristicas;
                 const selectElement = document.getElementById('select-caracteristicas');
                 selectCaracteristicas.forEach(caract => {
@@ -117,6 +117,7 @@ async function enviarDatos() {
     let globalResultadoId = '';
     let datosAlumnosParaPredecir = {};
     let atribCalculados = 0;
+    let chatsEvaluados = 0;
 
 function mostrarFormularioPrediccion(caracteristicas, metodo, etiqueta, porcentaje, resultadoId) {
     // Guardar los parámetros en las variables globales
@@ -133,12 +134,17 @@ function mostrarFormularioPrediccion(caracteristicas, metodo, etiqueta, porcenta
         caracteristica === '(IA) - % Relación con la asignatura' || caracteristica === '(IA) - % Conocimiento sobre la asignatura'
     );
 
+    // Verificar si hay que evaluar 
+    const necesitaEvaluar = caracteristicasArray.some(caracteristica => 
+        caracteristica === '% Relación con la asignatura' || caracteristica === '% Conocimiento sobre la asignatura'
+    );
+
     // Comprobar si el objeto no está vacío
     if (Object.keys(datosAlumnosParaPredecir).length > 0) {
-        if (necesitaValoresIA) {
+        if (necesitaValoresIA && necesitaEvaluar) {
             const aux = datosAlumnosParaPredecir.caracteristicas;
             
-            if (atribCalculados === 1) {
+            if (atribCalculados === 1 && chatsEvaluados === 1) {
                 // Cambiar el vector de características
                 datosAlumnosParaPredecir.caracteristicas = caracteristicasArray;
                 document.getElementById("button-aceptar").classList.remove('boton-disabled');

@@ -63,6 +63,7 @@ api_app = FastAPI(title="API")
 
 # Variables globales
 evaluacion_dict = {}
+hayResultados = 0
 
 class ValoresInput(BaseModel):
     relacion: int
