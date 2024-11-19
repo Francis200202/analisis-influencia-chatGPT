@@ -57,6 +57,17 @@
             </h1>
         </div>
     </div>
+
+    <!-- Overlay y Modal específico -->
+    <div id="custom-modal-overlay" style="display: none;">
+        <div id="custom-modal">
+            <button class="close-button-custom icon-group" onclick="closeCustomModal()">
+                <span class="material-symbols-outlined p-1 icons">close</span>
+            </button>
+            <iframe id="custom-modal-iframe" src="" width="100%" height="100%" frameborder="0"></iframe>
+        </div>
+    </div>
+
     <!-- Entrenamiento -->
     <div class="p-4 mx-auto overflow-hidden mx-auto" id="analisis">
         <div class="margen-gris">
@@ -136,7 +147,7 @@
                     </div>
                 </div>
                 <div class="button-container">
-                    <button id="button-aceptar" class="boton-disabled" onclick="realizarPrediccion()">Aceptar</button>
+                    <button id="button-aceptar" class="boton-disabled" onclick="aceptar()">Aceptar</button>
                 </div>
             </div>
         </div>
@@ -148,8 +159,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            transicionPrediccion();    
-            caracteristicas();
+        transicionPrediccion();
+        caracteristicas();
         });
     </script>
     <script>
@@ -157,7 +168,7 @@
         const input = document.querySelector("#input");
         value.textContent = input.value;
         input.addEventListener("input", (event) => {
-            value.textContent = Math.round(event.target.value);
+        value.textContent = Math.round(event.target.value);
         });
     </script>
 </body>

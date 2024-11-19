@@ -12,6 +12,28 @@ function pagina_conversaciones() {
     window.location.href = '/templates/conversaciones.html';
 }
 
+//Pagina evaluar
+function openCustomModal(url) {
+    // Agrega el efecto difuminado al fondo
+    document.getElementById('index').classList.add('blur-background-custom');
+
+    // Muestra el overlay y carga la nueva página en el iframe
+    document.getElementById('custom-modal-overlay').style.display = 'flex';
+    document.getElementById('custom-modal-iframe').src = url;
+}
+
+function closeCustomModal() {
+    // Remueve el efecto difuminado del fondo
+    document.getElementById('index').classList.remove('blur-background-custom');
+
+    // Oculta el overlay y limpia el src del iframe
+    document.getElementById('custom-modal-overlay').style.display = 'none';
+    document.getElementById('custom-modal-iframe').src = '';
+
+    // Actualizar numero de alumnos evaluados
+    updateEvaluacionStatus();
+}
+
 async function caracteristicas() {
     fetch('/api/obtener_caracteristicas')
         .then(response => response.json())
@@ -118,6 +140,7 @@ async function enviarDatos() {
     let datosAlumnosParaPredecir = {};
     let atribCalculados = 0;
     let chatsEvaluados = 0;
+    let necesitaEvaluar = false;
 
 function mostrarFormularioPrediccion(caracteristicas, metodo, etiqueta, porcentaje, resultadoId) {
     // Guardar los parámetros en las variables globales
@@ -135,16 +158,14 @@ function mostrarFormularioPrediccion(caracteristicas, metodo, etiqueta, porcenta
     );
 
     // Verificar si hay que evaluar 
-    const necesitaEvaluar = caracteristicasArray.some(caracteristica => 
+    necesitaEvaluar = caracteristicasArray.some(caracteristica => 
         caracteristica === '% Relación con la asignatura' || caracteristica === '% Conocimiento sobre la asignatura'
     );
 
     // Comprobar si el objeto no está vacío
     if (Object.keys(datosAlumnosParaPredecir).length > 0) {
-        if (necesitaValoresIA && necesitaEvaluar) {
-            const aux = datosAlumnosParaPredecir.caracteristicas;
-            
-            if (atribCalculados === 1 && chatsEvaluados === 1) {
+        if(necesitaValoresIA) { 
+            if (atribCalculados === 1) {
                 // Cambiar el vector de características
                 datosAlumnosParaPredecir.caracteristicas = caracteristicasArray;
                 document.getElementById("button-aceptar").classList.remove('boton-disabled');
@@ -218,6 +239,7 @@ function mostrarFormularioPrediccion(caracteristicas, metodo, etiqueta, porcenta
                                 errorDiv.style.display = 'none';
                                 errorDiv.textContent = '';
                                 console.log("Datos de IA obtenidos:", datosAlumnosParaPredecir);
+                                // Habilitar boton
                                 document.getElementById("button-aceptar").classList.remove('boton-disabled');
                             } else {
                                 throw new Error('Error al obtener los valores de IA');
@@ -280,6 +302,14 @@ function mostrarFormularioPrediccion(caracteristicas, metodo, etiqueta, porcenta
 function cerrarFormularioPrediccion() {
     // Ocultar el modal
     document.getElementById('prediccionModal').style.display = 'none';
+}
+
+function aceptar() {
+    if (necesitaEvaluar){
+        openCustomModal('/templates/evaluarParaPredecir.html')
+    } else {
+        realizarPrediccion();
+    }
 }
 
 async function realizarPrediccion() {
