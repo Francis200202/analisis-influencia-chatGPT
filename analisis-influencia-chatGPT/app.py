@@ -63,6 +63,7 @@ api_app = FastAPI(title="API")
 
 # Variables globales
 evaluacion_dict = {}
+evaluacion_dict_predict = {}
 hayResultados = 0
 
 class ValoresInput(BaseModel):
@@ -273,7 +274,16 @@ def check_folder_empty():
 @api_app.get("/json-files")
 def get_json_files():
     json_files = []
-    for filename in os.listdir("data/extracted_files"):
+    for filename in os.listdir(UPLOAD_DIR):
+        if filename.endswith(".json"):
+            json_files.append(filename)
+    return {"json_files": json_files}
+
+# Prediccion
+@api_app.get("/json-files-predict")
+def get_json_files_predict():
+    json_files = []
+    for filename in os.listdir(UPLOAD_PREDICT):
         if filename.endswith(".json"):
             json_files.append(filename)
     return {"json_files": json_files}
@@ -288,6 +298,21 @@ async def load_conversations_from_file(path: str = Query(..., title="File Path")
         path = "data/extracted_files/" + path
         print(path)
         conversations = load_conversations(path)
+        return {"message": "Conversations loaded successfully"}
+    except Exception as e:
+        return {"error": str(e)}
+
+# Prediccion
+@api_app.get("/load-conversations-predict")
+async def load_conversations_from_file_predict(path: str = Query(..., title="File Path")):
+    global conversations_predict  # Accede a la variable conversations global
+    global JSON_Selected_predict
+
+    try:
+        JSON_Selected_predict = path
+        path = "data/files_for_predict/" + path
+        print(path)
+        conversations_predict = load_conversations(path)
         return {"message": "Conversations loaded successfully"}
     except Exception as e:
         return {"error": str(e)}
@@ -313,11 +338,70 @@ def get_conversations():
         } for conv in conversations]
     return JSONResponse(content=conversations_data)
 
+# Prediccion
+@api_app.get("/conversations-predict")
+def get_conversations_predict():
+    # Get favorites
+    conn = connect_settings_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT conversation_id FROM favorites WHERE is_favorite = 1")
+    rows = cursor.fetchall()
+    favorite_ids = [row[0] for row in rows]
+    conn.close()
+
+    conversations_data = [{
+        "group": time_group(conv.created),
+        "id": conv.id, 
+        "title": conv.title_str,
+        "created": conv.created_str,
+        "total_length": human_readable_time(conv.total_length, short=True),
+        "is_favorite": conv.id in favorite_ids
+        } for conv in conversations_predict]
+    return JSONResponse(content=conversations_data)
+
 
 # All messages from a specific conversation by its ID
 @api_app.get("/conversations/{conv_id}/messages")
 def get_messages(conv_id: str):
     conversation = next((conv for conv in conversations if conv.id == conv_id), None)
+    if not conversation:
+        return JSONResponse(content={"error": "Invalid conversation ID"}, status_code=404)
+
+    messages = []
+    prev_created = None  # Keep track of the previous message's creation time
+    for msg in conversation.messages:
+        if not msg:
+            continue
+
+        # If there's a previous message and the time difference is 1 hour or more
+        if prev_created and (msg.created - prev_created).total_seconds() >= 3600:
+            delta = msg.created - prev_created
+            time_str = human_readable_time(delta.total_seconds())            
+            messages.append({
+                "text": f"{time_str} passed", 
+                "role": "internal"
+                })
+
+        messages.append({
+            "text": markdown(msg.text),
+            "role": msg.role, 
+            "created": msg.created_str
+        })
+
+        # Update the previous creation time for the next iteration
+        prev_created = msg.created
+
+    response = {
+        "conversation_id": conversation.id,
+        "messages": messages
+    }
+
+    return JSONResponse(content=response)
+
+# Prediccion
+@api_app.get("/conversations-predict/{conv_id}/messages")
+def get_messages_predict(conv_id: str):
+    conversation = next((conv for conv in conversations_predict if conv.id == conv_id), None)
     if not conversation:
         return JSONResponse(content={"error": "Invalid conversation ID"}, status_code=404)
 
@@ -557,6 +641,41 @@ def search_conversations(query: str = Query(..., min_length=3, description="Sear
 
     return JSONResponse(content=search_results)
 
+# Prediccion
+@api_app.get("/search-predict")
+def search_conversations_predict(query: str = Query(..., min_length=3, description="Search query")):
+
+    def add_search_result(search_results, result_type, conv, msg):
+        search_results.append({
+            "type": result_type,
+            "id": conv.id,
+            "title": conv.title_str,
+            "text": markdown(msg.text),
+            "role": msg.role,
+            "created": conv.created_str if result_type == "conversation" else msg.created_str,
+        })
+
+    def find_conversation_by_id(conversations_predict, id):
+        return next((conv for conv in conversations_predict if conv.id == id), None)
+
+    def find_message_by_id(messages, id):
+        return next((msg for msg in messages if msg.id == id), None)
+
+    search_results = []
+
+    for conv in conversations_predict:
+        query_lower = query.lower()
+        if (conv.title or "").lower().find(query_lower) != -1:
+            add_search_result(search_results, "conversation", conv, conv.messages[0])
+
+        for msg in conv.messages:
+            if msg and msg.text.lower().find(query_lower) != -1:
+                add_search_result(search_results, "message", conv, msg)
+
+        if len(search_results) >= 10:
+            break
+
+    return JSONResponse(content=search_results)
 
 
 # Toggle favorite status
@@ -1385,12 +1504,30 @@ async def obtener_valor_evaluacion(nombre: str):
     else:
         return {"mensaje": "No se encontraron valores guardados para este usuario", "relacion": None, "conocimiento": None}
 
+# Prediccion
+@api_app.get("/obtener_valor_evaluacion_predict/{nombre}")
+async def obtener_valor_evaluacion_predict(nombre: str):
+    global evaluacion_dict_predict
+    if nombre in evaluacion_dict_predict:
+        valores = evaluacion_dict_predict[nombre]
+        return {"relacion": valores["relacion"], "conocimiento": valores["conocimiento"]}
+    else:
+        return {"mensaje": "No se encontraron valores guardados para este usuario", "relacion": None, "conocimiento": None}
+
 
 @api_app.get("/json-files-status")
 async def json_files_status():
     global evaluacion_dict
     # Devuelve un diccionario con el estado de guardado de cada archivo
     status_dict = {name: name in evaluacion_dict for name in evaluacion_dict.keys()}
+    return {"status": status_dict}
+
+# Prediccion
+@api_app.get("/json-files-status-predict")
+async def json_files_status_predict():
+    global evaluacion_dict_predict
+    # Devuelve un diccionario con el estado de guardado de cada archivo
+    status_dict = {name: name in evaluacion_dict_predict for name in evaluacion_dict_predict.keys()}
     return {"status": status_dict}
 
 
@@ -1416,6 +1553,29 @@ async def guardar_valor_evaluacion(valores: ValoresInput):
     print(f"Valores guardados: {evaluacion_dict}")
     return {"mensaje": "Valores recibidos correctamente", "valores": valores}
 
+# Prediccion
+@api_app.post("/guardar_valor_evaluacion_predict")
+async def guardar_valor_evaluacion_predict(valores: ValoresInput):
+    global evaluacion_dict_predict
+    # Validación de valores
+    if valores.relacion < 0 or valores.conocimiento < 0:
+        raise HTTPException(status_code=400, detail="Valores no válidos")
+
+    # Actualizar o agregar el nombre al diccionario
+    if valores.nombre in evaluacion_dict_predict:
+        # Actualizar valores existentes
+        evaluacion_dict_predict[valores.nombre]['relacion'] = valores.relacion
+        evaluacion_dict_predict[valores.nombre]['conocimiento'] = valores.conocimiento
+    else:
+        # Agregar nuevos valores
+        evaluacion_dict_predict[valores.nombre] = {
+            "relacion": valores.relacion,
+            "conocimiento": valores.conocimiento
+        }
+
+    print(f"Valores guardados: {evaluacion_dict_predict}")
+    return {"mensaje": "Valores recibidos correctamente", "valores": valores}
+
 
 @api_app.delete("/eliminar_valor_evaluacion")
 async def eliminar_valor_evaluacion(nombre_input: NombreInput):
@@ -1430,6 +1590,22 @@ async def eliminar_valor_evaluacion(nombre_input: NombreInput):
     else:
         # Lanzar un error si el nombre no existe en el diccionario
         raise HTTPException(status_code=404, detail=f"No se encontraron valores para '{nombre}'")
+
+# Prediccion
+@api_app.delete("/eliminar_valor_evaluacion_predict")
+async def eliminar_valor_evaluacion_predict(nombre_input: NombreInput):
+    global evaluacion_dict_predict
+    nombre = nombre_input.nombre
+
+    # Verificar si el nombre existe en el diccionario
+    if nombre in evaluacion_dict_predict:
+        # Eliminar el nombre del diccionario
+        del evaluacion_dict_predict[nombre]
+        return {"mensaje": f"Valores de '{nombre}' eliminados exitosamente"}
+    else:
+        # Lanzar un error si el nombre no existe en el diccionario
+        raise HTTPException(status_code=404, detail=f"No se encontraron valores para '{nombre}'")
+
 
 
 # Función para contar tokens, le damos el modelo gpt-3.5-turbo que es compatible en términos de conteo de tokens, aunque el modelo en sí sea diferente

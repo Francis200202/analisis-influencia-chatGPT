@@ -15,7 +15,8 @@ function pagina_conversaciones() {
 //Pagina evaluar
 function openCustomModal(url) {
     // Agrega el efecto difuminado al fondo
-    document.getElementById('index').classList.add('blur-background-custom');
+    document.getElementById('analisis').classList.add('blur-background-custom');
+    document.getElementById('header').classList.add('blur-background-custom');
 
     // Muestra el overlay y carga la nueva página en el iframe
     document.getElementById('custom-modal-overlay').style.display = 'flex';
@@ -24,14 +25,12 @@ function openCustomModal(url) {
 
 function closeCustomModal() {
     // Remueve el efecto difuminado del fondo
-    document.getElementById('index').classList.remove('blur-background-custom');
+    document.getElementById('analisis').classList.remove('blur-background-custom');
+    document.getElementById('header').classList.remove('blur-background-custom');
 
     // Oculta el overlay y limpia el src del iframe
     document.getElementById('custom-modal-overlay').style.display = 'none';
     document.getElementById('custom-modal-iframe').src = '';
-
-    // Actualizar numero de alumnos evaluados
-    updateEvaluacionStatus();
 }
 
 async function caracteristicas() {
