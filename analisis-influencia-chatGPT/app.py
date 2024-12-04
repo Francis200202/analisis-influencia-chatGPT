@@ -1478,6 +1478,32 @@ def obtener_resultados():
     return JSONResponse(content=evaluacion_dict)
 
 
+@api_app.get("/obtener_evaluacion_predict")
+async def obtener_evaluacion_predict():
+    global evaluacion_dict_predict
+    if len(evaluacion_dict_predict) == 0:
+        raise HTTPException(status_code=400, detail="No hay alumnos evaluados")
+
+    dictEV = {}
+    json_files = []
+    relacion = []
+    conocimiento = []
+    for filename in os.listdir(UPLOAD_PREDICT):
+        if filename.endswith(".json"):
+            json_files.append(filename)
+    
+    for jsonn in json_files:
+        relacion.append(evaluacion_dict_predict[jsonn]['relacion'])
+        conocimiento.append(evaluacion_dict_predict[jsonn]['conocimiento'])
+
+    dictEV = {
+        "relacion": relacion,
+        "conocimiento": conocimiento
+    }
+
+    return JSONResponse(content=dictEV)
+
+
 @api_app.post("/reset-evaluacion")
 async def reset_evaluacion():
     global evaluacion_dict

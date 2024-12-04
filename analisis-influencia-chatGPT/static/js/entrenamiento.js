@@ -12,6 +12,17 @@ function pagina_conversaciones() {
     window.location.href = '/templates/conversaciones.html';
 }
 
+// Variables globales para almacenar los parámetros
+    let globalCaracteristicas = '';
+    let globalMetodo = '';
+    let globalEtiqueta = '';
+    let globalPorcentaje = '';
+    let globalResultadoId = '';
+    let datosAlumnosParaPredecir = {};
+    let atribCalculados = 0;
+    let chatsEvaluados = 0;
+    let necesitaEvaluar = false;
+
 //Pagina evaluar
 function openCustomModal(url) {
     // Agrega el efecto difuminado al fondo
@@ -23,7 +34,7 @@ function openCustomModal(url) {
     document.getElementById('custom-modal-iframe').src = url;
 }
 
-function closeCustomModal() {
+async function closeCustomModal() {
     // Remueve el efecto difuminado del fondo
     document.getElementById('analisis').classList.remove('blur-background-custom');
     document.getElementById('header').classList.remove('blur-background-custom');
@@ -31,6 +42,27 @@ function closeCustomModal() {
     // Oculta el overlay y limpia el src del iframe
     document.getElementById('custom-modal-overlay').style.display = 'none';
     document.getElementById('custom-modal-iframe').src = '';
+
+    try {
+        const respuesta = await fetch('/api/obtener_evaluacion_predict');
+        const datos = await respuesta.json();
+        if (respuesta.ok) {
+            const valores = datos.eval
+            datosAlumnosParaPredecir = {
+                ...datosAlumnosParaPredecir,
+                relacion: datos.relacion,
+                conocimiento: datos.conocimiento
+            };
+            realizarPrediccion();
+        } else {
+            throw new Error('Error al obtener los valores de evaluación');
+            datosAlumnosParaPredecir = {};
+        }
+    } catch (error) {
+        console.error('Error al obtener el diccionario:', error);
+        return null;
+    }
+    
 }
 
 async function caracteristicas() {
@@ -130,16 +162,7 @@ async function enviarDatos() {
         });
 }
 
-// Variables globales para almacenar los parámetros
-    let globalCaracteristicas = '';
-    let globalMetodo = '';
-    let globalEtiqueta = '';
-    let globalPorcentaje = '';
-    let globalResultadoId = '';
-    let datosAlumnosParaPredecir = {};
-    let atribCalculados = 0;
-    let chatsEvaluados = 0;
-    let necesitaEvaluar = false;
+
 
 function mostrarFormularioPrediccion(caracteristicas, metodo, etiqueta, porcentaje, resultadoId) {
     // Guardar los parámetros en las variables globales
@@ -227,11 +250,10 @@ function mostrarFormularioPrediccion(caracteristicas, metodo, etiqueta, porcenta
                             const datosIA = await responseIA.json();
 
                             if (responseIA.ok) {
-                                const valoresIA = datosIA.IA
                                 datosAlumnosParaPredecir = {
                                     ...datosAlumnosParaPredecir,
-                                    relacion: datosIA.relacion,
-                                    conocimiento: datosIA.conocimiento
+                                    relacionIA: datosIA.relacion,
+                                    conocimientoIA: datosIA.conocimiento
                                 };
                                 atribCalculados = 1;
                                 resultDiv.textContent = 'Archivo cargado y extraído exitosamente.';
@@ -328,10 +350,14 @@ async function realizarPrediccion() {
                 valores.push(datosAlumnosParaPredecir.longitud_promedio[i]);
             } else if (caracteristica === "Dispersión de los mensajes") {
                 valores.push(datosAlumnosParaPredecir.dispersion_promedio[i]);
-            } else if (caracteristica === "(IA) - % Relación con la asignatura") {
+            } else if (caracteristica === "% Relación con la asignatura") {
                 valores.push(datosAlumnosParaPredecir.relacion[i]);
-            } else if (caracteristica === "(IA) - % Conocimiento sobre la asignatura") {
+            } else if (caracteristica === "% Conocimiento sobre la asignatura") {
                 valores.push(datosAlumnosParaPredecir.conocimiento[i]);
+            } else if (caracteristica === "(IA) - % Relación con la asignatura") {
+                valores.push(datosAlumnosParaPredecir.relacionIA[i]);
+            } else if (caracteristica === "(IA) - % Conocimiento sobre la asignatura") {
+                valores.push(datosAlumnosParaPredecir.conocimientoIA[i]);
             }
         });
 
