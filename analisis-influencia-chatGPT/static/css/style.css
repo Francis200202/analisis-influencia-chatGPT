@@ -169,14 +169,74 @@
 
 #custom-modal {
     background-color: #E5E7EB;
-    width: 90%; /* Ocupa el 80% de la pantalla */
-    height: 90%;
+    width: 90%;
+    height: 80%;
     padding: 10px;
     border-radius: 8px;
     overflow-y: auto;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
     position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
+
+.modal-footer {
+    position: absolute;
+    bottom: 15px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+}
+
+.nav-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 30px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s ease;
+    z-index: 100;
+}
+
+#prev-button {
+    left: 1%; /* Posición en el lado izquierdo */
+}
+
+#next-button {
+    right: 1%; /* Posición en el lado derecho */
+}
+
+.nav-button:hover {
+    background: rgba(255, 255, 255, 0.8);
+    color: black;
+}
+
+#accept-button {
+    background-color: black;
+    width: 15%;
+    min-width: 100px;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+    #accept-button:hover {
+        background-color: lightgrey;
+        color: black;
+    }
 
 .blur-background-custom {
     filter: blur(5px);
