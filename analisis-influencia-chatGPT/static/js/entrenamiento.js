@@ -34,7 +34,41 @@ function openCustomModal(url) {
     document.getElementById('custom-modal-iframe').src = url;
 }
 
+window.addEventListener("message", (event) => {
+    console.log("Mensaje recibido:", event.data);
+    // Verificar la acción del mensaje
+    if (event.data.action === "updateAcceptButton") {
+        const acceptButton = document.getElementById("accept-button");
+
+        if (event.data.state) {
+            acceptButton.classList.remove("boton-disabled");
+        } else {
+            acceptButton.classList.add("boton-disabled");
+        }
+    }
+});
+
+function navigateModal(direction) {
+    const iframe = document.getElementById("custom-modal-iframe");
+
+    if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage({ action: "navigateConversation", direction }, "*");
+    } else {
+        console.error("Iframe no encontrado o no accesible.");
+    }
+}
+
 async function closeCustomModal() {
+    // Remueve el efecto difuminado del fondo
+    document.getElementById('analisis').classList.remove('blur-background-custom');
+    document.getElementById('header').classList.remove('blur-background-custom');
+
+    // Oculta el overlay y limpia el src del iframe
+    document.getElementById('custom-modal-overlay').style.display = 'none';
+    document.getElementById('custom-modal-iframe').src = '';
+}
+
+async function closeCustomModalAndPredict() {
     // Remueve el efecto difuminado del fondo
     document.getElementById('analisis').classList.remove('blur-background-custom');
     document.getElementById('header').classList.remove('blur-background-custom');
@@ -62,7 +96,6 @@ async function closeCustomModal() {
         console.error('Error al obtener el diccionario:', error);
         return null;
     }
-    
 }
 
 async function caracteristicas() {

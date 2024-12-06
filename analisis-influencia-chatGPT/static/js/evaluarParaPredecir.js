@@ -1,5 +1,34 @@
 ﻿let conversationData = null;
 
+window.addEventListener("message", (event) => {
+    if (event.data.action === "navigateConversation") {
+        const direction = event.data.direction;
+
+        // Determinar el archivo anterior o siguiente
+        changeSelectedFile(direction);
+    }
+});
+
+function changeSelectedFile(direction) {
+    const jsonSelect = document.getElementById("jsonSelect");
+    const options = Array.from(jsonSelect.options);
+    const currentIndex = options.findIndex(option => option.value === jsonSelect.value);
+
+    if (direction === "prev" && currentIndex > 0) {
+        // Seleccionar el archivo anterior
+        jsonSelect.value = options[currentIndex - 1].value;
+    } else if (direction === "next" && currentIndex < options.length - 1) {
+        // Seleccionar el archivo siguiente
+        jsonSelect.value = options[currentIndex + 1].value;
+    } else {
+        console.log("No hay más conversaciones en esta dirección.");
+        return;
+    }
+
+    // Cargar la conversación seleccionada
+    handleConversationSelect();
+}
+
 function handleConversationSelect() {
     const selectedFilePath = document.getElementById("jsonSelect").value;
     if (selectedFilePath) {
@@ -27,6 +56,21 @@ function handleConversationSelect() {
 //Obtener lista de archivos JSON del backend
 async function loadJsonFiles() {
     try {
+        // Comprobar si estan evaluados todos los alumnos
+        const evaluados = await fetch("/api/estado-evaluacion-predict");
+        const dataEv = await evaluados.json();
+        if (dataEv.alumnosEvaluados == dataEv.totalAlumnos) {
+            console.log("Enviando mensaje al padre: todos evaluados");
+            console.log(dataEv.alumnosEvaluados);
+            console.log(dataEv.totalAlumnos);
+            window.parent.postMessage({ action: "updateAcceptButton", state: true }, "*");
+        } else {
+            console.log("Enviando mensaje al padre: todos evaluados");
+            console.log(dataEv.alumnosEvaluados);
+            console.log(dataEv.totalAlumnos);
+            window.parent.postMessage({ action: "updateAcceptButton", state: false }, "*");
+        }
+
         // Obtener la lista de archivos JSON
         const response = await fetch("/api/json-files-predict");
         const data = await response.json();
@@ -387,6 +431,17 @@ async function enviarValores() {
 
             document.getElementById("boton_elim").classList.add("disabled");
         }
+
+        // Comprobar si estan evaluados todos los alumnos
+        const evaluados = await fetch("/api/estado-evaluacion-predict");
+        const dataEv = await evaluados.json();
+        if (dataEv.alumnosEvaluados === dataEv.totalAlumnos) {
+            window.parent.postMessage({ action: "updateAcceptButton", state: true }, "*");
+        } else {
+            window.parent.postMessage({ action: "updateAcceptButton", state: false }, "*");
+        }
+
+
     } catch (error) {
         console.error("Error en la solicitud:", error);
         document.getElementById("statusIcon").innerHTML = "error";
@@ -426,6 +481,8 @@ async function eliminarValores() {
             option.classList.remove("bg-green-200");
 
             document.getElementById("boton_elim").classList.add("disabled");
+
+            window.parent.postMessage({ action: "updateAcceptButton", state: false }, "*");
         } else {
             throw new Error('Error al eliminar valores');
         }

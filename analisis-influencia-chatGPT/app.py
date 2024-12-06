@@ -1521,6 +1521,15 @@ async def estado_evaluacion():
     return {"alumnosEvaluados": alumnos_evaluados, "totalAlumnos": num_archivos_json}
 
 
+@api_app.get("/estado-evaluacion-predict")
+async def estado_evaluacion_predict():
+    global evaluacion_dict_predict
+    alumnos_evaluados = len(evaluacion_dict_predict)
+    print(evaluacion_dict_predict)
+    num_archivos_json = len([archivo for archivo in os.listdir(UPLOAD_PREDICT) if archivo.endswith(".json")])
+    return {"alumnosEvaluados": alumnos_evaluados, "totalAlumnos": num_archivos_json}
+
+
 @api_app.get("/obtener_valor_evaluacion/{nombre}")
 async def obtener_valor_evaluacion(nombre: str):
     global evaluacion_dict
