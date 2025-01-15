@@ -148,7 +148,7 @@ def search_conversations_json(directory, destination_folder):
         for file in files:
             file_path = os.path.join(root, file)
             
-            # Si encontramos un archivo conversations.json, lo copiamos a extracted_files con el nombre de la carpeta
+            # Si encontramos un archivo conversations.json, lo copiamos a extracted_files con el nombre de la carpeta que lo contiene
             if file == 'conversations.json':
                 folder_name = os.path.basename(root)
                 dest_file_path = os.path.join(destination_folder, f"{folder_name}.json")

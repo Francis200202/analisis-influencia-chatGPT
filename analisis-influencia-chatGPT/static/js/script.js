@@ -62,10 +62,9 @@ function closeCustomModal() {
 }
 
 function ayuda() {
+    document.getElementById('help-container').style.display = 'block';
     document.getElementById('help').style.display = 'block';
-    document.getElementById('seleccionar_archivos').style.display = 'none';
-    document.getElementById("usar-IA").style.display = 'none';
-    document.getElementById("hacer-evaluacion").style.display = 'none';
+    document.getElementById('index').style.display = 'none';
     document.getElementById('ayuda-link').style.color = '#abebc6';
     document.getElementById('inicio-link').style.color = 'white';
 }

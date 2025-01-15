@@ -10,6 +10,13 @@ function pagina_prediccion() {
     window.location.href = '/templates/entrenamiento.html';
 }
 
+function ayuda() {
+    document.getElementById('help-container').style.display = 'block';
+    document.getElementById('help').style.display = 'block';
+    document.getElementById('container').style.display = 'none';
+    document.getElementById('ayuda-link').style.color = '#abebc6';
+}
+
 function handleConversationSelect() {
     const selectedFilePath = document.getElementById("jsonSelect").value;
     if (selectedFilePath) {
