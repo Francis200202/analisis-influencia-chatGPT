@@ -12,6 +12,15 @@ function transicionCorrelacion() {
     document.getElementById('transicionC').classList.add('slide-in-left');
 }
 
+function ayuda() {
+    document.getElementById('help-container').style.display = 'block';
+    document.getElementById('ayuda_header').style.display = 'block';
+    document.getElementById('analisis').style.display = 'none';
+    document.getElementById('ayuda-link').style.color = '#abebc6';
+    document.getElementById('analisisLink').style.color = 'white';
+    document.getElementById('correlacionLink').style.color = 'white';
+}
+
 // Insertar los charts
 async function analisis() {
     fetch('/api/generar_datos')

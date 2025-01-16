@@ -20,7 +20,7 @@
         </div>
         <div class="w-1/8 items-center relative group z-50">
             <h1 class="text-1xl ml-8 flex-grow">
-                <a href="#" class="icon-group pagina-activa" id="inicio-link">
+                <a href="#" class="icon-group pagina-activa" id="analisisLink">
                     <span class="material-symbols-outlined icons">analytics</span>
                     ANÁLISIS
                     <span class="material-symbols-outlined icon">stat_minus_1</span>
@@ -41,7 +41,7 @@
                     </a>
                 </h1>
                 <h1 class="text-1xl px-4 py-2 flex-grow">
-                    <a href="#" class="icon-group pagina-activa">
+                    <a href="/templates/entrenamiento.html" id="prediccionLink" class="icon-group pagina-activa">
                         <span class="material-symbols-outlined icons">network_node</span>
                         PREDICCIÓN
                     </a>
@@ -160,7 +160,53 @@
                 </div>
             </div>
         </div>
+    </div>
 
+    <div id="ayuda_header">
+        <div class="ayuda_header">
+            <a href="/templates/entrenamiento.html" class="p-2 ml-5 text-1xl icon-group">
+                <span class="material-symbols-outlined p-1 icons">arrow_back</span>
+            </a>
+            <div class="ayuda_title">
+                <h1>AYUDA PREDICCIÓN</h1>
+            </div>
+        </div>
+    </div>
+    <div class="mx-auto overflow-hidden" id="help-container">
+        <div class="guide-container" id="help">
+            <h1>Análisis de predicción</h1>
+            <p>El análisis de predicción permite la selección y entrenamiento de un modelo basado en un conjunto de datos. A continuación se describen los pasos detallados para llevar a cabo este proceso de manera eficiente:</p>
+
+            <h3>1. Selección del algoritmo</h3>
+            <p>En primer lugar, el usuario debe elegir uno de los siguientes algoritmos para la predicción:</p>
+            <ul>
+                <li><strong>Algoritmo KNN (K-Nearest Neighbors):</strong> Utiliza las características de los datos cercanos a la instancia que se desea predecir.</li>
+                <li><strong>Algoritmo Árbol de Decisión:</strong> Construye un modelo en forma de árbol donde cada nodo representa una decisión basada en las características del conjunto de datos.</li>
+                <li><strong>Algoritmo XGBoost:</strong> Un algoritmo de boosting que utiliza árboles de decisión como base, optimizando el rendimiento mediante el ajuste iterativo.</li>
+                <li><strong>Red Neuronal MLP (Multilayer Perceptron):</strong> Utiliza capas de neuronas conectadas entre sí para aprender patrones complejos en los datos.</li>
+            </ul>
+
+            <h3>2. Selección de características</h3>
+            <p>A continuación, el usuario debe seleccionar una o varias características relevantes para la predicción. Para seleccionar múltiples características, simplemente mantenga presionada la tecla <strong>Ctrl</strong> y haga clic en las opciones deseadas.</p>
+
+            <h3>3. Selección de la etiqueta a predecir</h3>
+            <p>Una vez seleccionadas las características, se debe indicar la etiqueta (variable de salida) que se desea predecir.</p>
+
+            <h3>4. Selección del % de prueba</h3>
+            <p>Una vez seleccionadas las características y la etiqueta, se puede indicar el porcentaje de los datos que se utilizarán para probar el modelo. (Por defecto: 20%) </p>
+
+            <h3>5. Generación del Modelo</h3>
+            <p>Al hacer clic en el botón <strong>Generar Modelo</strong>, el sistema entrenará el modelo utilizando el algoritmo seleccionado y las características elegidas, generando resultados de testeo que permitirán evaluar su rendimiento.</p>
+
+            <h3>6. Predicción</h3>
+            <p>Una vez generado el modelo, el usuario puede hacer clic en el botón <strong>Predecir</strong>. Este paso abrirá una ventana donde deberá cargar una o varias conversaciones para realizar la predicción. Al pulsar el botón <strong>Aceptar</strong>, el modelo calculará y mostrará la predicción de la etiqueta seleccionada previamente.</p>
+
+            <h3>Casos Especiales</h3>
+            <ul>
+                <li><strong>% de relación o % de conocimiento de los valores de evaluación:</strong> Si se seleccionan estas características, el usuario debe evaluar las conversaciones cargadas para que el modelo pueda predecir la etiqueta correspondiente.</li>
+                <li><strong>% de relación o % de conocimiento de los atributos calculados:</strong> Si se seleccionan estas características, el usuario debe esperar a que el sistema calcule los atributos necesarios antes de proceder con la predicción.</li>
+            </ul>
+        </div>
     </div>
     <link href="/css/style.css" rel="stylesheet" />
     <script src="/js/entrenamiento.js"></script>
@@ -168,8 +214,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-        transicionPrediccion();
-        caracteristicas();
+            transicionPrediccion();
+            caracteristicas();
         });
     </script>
     <script>
@@ -177,7 +223,7 @@
         const input = document.querySelector("#input");
         value.textContent = input.value;
         input.addEventListener("input", (event) => {
-        value.textContent = Math.round(event.target.value);
+            value.textContent = Math.round(event.target.value);
         });
     </script>
 </body>

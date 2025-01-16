@@ -20,7 +20,7 @@
         </div>
         <div class="w-1/8 items-center relative group z-50">
             <h1 class="text-1xl ml-8 flex-grow">
-                <a href="#" class="icon-group pagina-activa" id="inicio-link">
+                <a href="#" class="icon-group pagina-activa" id="analisisLink">
                     <span class="material-symbols-outlined icons">analytics</span>
                     ANÁLISIS
                     <span class="material-symbols-outlined icon">stat_minus_1</span>
@@ -35,7 +35,7 @@
                     </a>
                 </h1>
                 <h1 class="text-1xl px-4 py-2 flex-grow">
-                    <a href="#" id="correlacionLink" class="icon-group pagina-activa">
+                    <a href="/templates/analisis.html" id="correlacionLink" class="icon-group pagina-activa">
                         <span class="material-symbols-outlined icons">grain</span>
                         CORRELACIÓN
                     </a>
@@ -106,12 +106,60 @@
             </div>
         </div>
     </div>
+    <div id="ayuda_header">
+        <div class="ayuda_header">
+            <a href="/templates/analisis.html" class="p-2 ml-5 text-1xl icon-group">
+                <span class="material-symbols-outlined p-1 icons">arrow_back</span>
+            </a>
+            <div class="ayuda_title">
+                <h1>AYUDA CORRELACIÓN</h1>
+            </div>
+        </div>
+    </div>
+    <div class="mx-auto overflow-hidden" id="help-container">
+        <div class="guide-container" id="help">
+            <h1>Análisis de correlación</h1>
+            <p>En esta página puedes analizar la correlación entre las notas de los alumnos y diversas características relacionadas con su actividad en las conversaciones. A continuación, se describen las funcionalidades disponibles:</p>
+            <ul>
+                <li>
+                    <strong>Gráficos de Correlación:</strong>
+                    <ul>
+                        <li>Se muestran gráficos que relacionan las notas de los alumnos con las siguientes características:</li>
+                        <ul>
+                            <li><strong>Promedio de Mensajes:</strong> Muestra cómo el promedio de mensajes enviados por un alumno se correlaciona con su nota.</li>
+                            <li><strong>Longitud Promedio de Mensajes:</strong> Analiza la relación entre la longitud promedio de los mensajes y la nota obtenida.</li>
+                            <li><strong>Dispersión Promedio de Mensajes:</strong> Examina la variabilidad en la longitud de los mensajes y su impacto en las notas.</li>
+                        </ul>
+                        <li>Cada gráfico incluye el <strong>coeficiente de correlación</strong>, que indica la fuerza y dirección de la relación entre las variables.</li>
+                        <ul>
+                            <li><strong>Coeficiente cercano a 1:</strong> Existe una fuerte correlación positiva.</li>
+                            <li><strong>Coeficiente cercano a -1:</strong> Existe una fuerte correlación negativa.</li>
+                            <li><strong>Coeficiente cercano a 0:</strong> Indica que no existe una relación lineal clara entre las dos variables.</li>
+                        </ul>
+                    </ul>
+                </li>
+                <li>
+                    <strong>Valores de evaluación:</strong>
+                    <ul>
+                        <li>Si ya has evaluado previamente las conversaciones, estos valores se muestran y se incluyen en los gráficos de correlación con las notas.</li>
+                    </ul>
+                </li>
+                <li>
+                    <strong>Atributos calculados:</strong>
+                    <ul>
+                        <li>Al igual que los valores de evaluación, estos atributos solo se muestran y se consideran en los gráficos si ya han sido calculados previamente.</li>
+                    </ul>
+                </li>
+            </ul>
+            <p>Con estas herramientas, puedes explorar cómo las características de las conversaciones están relacionadas con el desempeño académico de los alumnos y obtener información valiosa para optimizar su aprendizaje.</p>
+        </div>
+    </div>
     <link href="/css/style.css" rel="stylesheet" />
     <script src="/js/analisis.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.2.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
+        document.addEventListener("DOMContentLoaded", function () {
             transicionCorrelacion();
             analisis();
         });

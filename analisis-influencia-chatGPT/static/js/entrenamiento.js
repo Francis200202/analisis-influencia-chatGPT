@@ -12,6 +12,15 @@ function pagina_conversaciones() {
     window.location.href = '/templates/conversaciones.html';
 }
 
+function ayuda() {
+    document.getElementById('help-container').style.display = 'block';
+    document.getElementById('ayuda_header').style.display = 'block';
+    document.getElementById('analisis').style.display = 'none';
+    document.getElementById('ayuda-link').style.color = '#abebc6';
+    document.getElementById('analisisLink').style.color = 'white';
+    document.getElementById('prediccionLink').style.color = 'white';
+}
+
 // Variables globales para almacenar los parámetros
     let globalCaracteristicas = '';
     let globalMetodo = '';

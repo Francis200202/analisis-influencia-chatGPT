@@ -20,7 +20,7 @@
         </div>
         <div class="w-1/8 items-center relative group z-50">
             <h1 class="text-1xl ml-8 flex-grow">
-                <a href="#" class="icon-group pagina-activa" id="inicio-link">
+                <a href="#" class="icon-group pagina-activa" id="analisisLink">
                     <span class="material-symbols-outlined icons">analytics</span>
                     ANÁLISIS
                     <span class="material-symbols-outlined icon">stat_minus_1</span>
@@ -132,156 +132,66 @@
             </div>
         </div>
     </div>
+
+    <div id="ayuda_header">
+        <div class="ayuda_header">
+            <a href="/templates/conversaciones.html" class="p-2 ml-5 text-1xl icon-group">
+                <span class="material-symbols-outlined p-1 icons">arrow_back</span>
+            </a>
+            <div class="ayuda_title">
+                <h1>AYUDA ESTADÍSTICAS</h1>
+            </div>
+        </div>
+    </div>
     <div class="mx-auto overflow-hidden" id="help-container">
         <div class="guide-container" id="help">
-            <h1>Guía para crear y subir el archivo ZIP y EXCEL correctamente</h1>
-            <p>Esta guía te ayudará a crear un archivo ZIP y EXCEL que contiene los datos necesarios para que la aplicación web funcione correctamente. Sigue los pasos a continuación:</p>
-
-            <h2>1. Obtener las conversaciones</h2>
-            <ul>
-                <li><strong>Los alumnos debe descargar sus conversaciones con ChatGPT</strong>.</li>
-                <li><strong>Obtendrán un archivo .zip</strong>. Deben modificarle el nombre por su nombre.</li>
-                <li><strong>Cada alumno debe enviarle el zip que contiene sus conversaciones con ChatGPT</strong>.</li>
-                <li>Es recomendable que el alumno cambie el nombre del archivo por <code>Nombre Apellido1 Apellido2.zip</code>.</li>
-            </ul>
-
-            <h2>2. Preparar el ZIP con las conversaciones</h2>
-            <ul>
-                <li><strong>Cada alumno debe haber enviado un archivo .zip</strong> que contenga sus conversaciones.</li>
-                <li><strong>El nombre del ZIP enviado es recomendable que sea el nombre del alumno</strong>. Por ejemplo, si el nombre del alumno es "Juan Pérez", el ZIP puede llamarse <code>Juan Pérez.zip</code>.</li>
-                <li>Asegúrate de que cada archivo .zip esté completo (debe contener el archivo <code>conversations.json</code>)</li>
-                <li class="important">Importante: No puede haber coincidencias en los nombres de los archivos.</li>
-                <li><strong>El usuario o profesor debe comprimir todos los .zip de los alumnos en un único ZIP.</strong></li>
-            </ul>
-            <ul>
-                <li>Al crear el ZIP, selecciona solo los archivos y no la carpeta que los contiene.</li>
-                <li>Si al descomprimir el ZIP ves que se genera una carpeta adicional, revisa los pasos de empaquetado y asegúrate de que los archivos seleccionados no estén dentro de una carpeta.</li>
-            </ul>
-
-            <h2>3. Crear el archivo Excel</h2>
-            <ol>
-                <li><strong>Abre Excel</strong> o cualquier editor de hojas de cálculo de tu preferencia.</li>
-                <li><strong>Crea una nueva hoja de cálculo</strong> y asegúrate de que la primera fila contenga los nombres de las columnas.</li>
-            </ol>
-
-            <h3>3.1 Columnas necesarias en el Excel</h3>
+            <h1>Análisis de las conversaciones</h1>
+            <p>En esta página puedes analizar las conversaciones de los alumnos. A continuación, te explicamos cada funcionalidad disponible:</p>
             <ul>
                 <li>
-                    <strong>Columna "FILENAME"</strong>: Esta columna debe contener los nombres de los archivos .ZIP de cada alumno. Ejemplo:
+                    <strong>Lista de conversaciones:</strong>
                     <ul>
-                        <li>Fila 2: <code>Juan Pérez</code></li>
-                        <li>Fila 3: <code>María García</code></li>
+                        <li>Muestra las conversaciones almacenadas.</li>
+                        <li>Puedes seleccionar una conversación para analizarla en detalle.</li>
                     </ul>
                 </li>
                 <li>
-                    <strong>Columna(s) de notas</strong>:
+                    <strong>Gráficos de actividad:</strong>
                     <ul>
-                        <li>Puedes tener una o más columnas de notas con los nombres de las evaluaciones, por ejemplo, <code>Nota Teoría</code>, <code>Nota Práctica</code>, etc.</li>
-                        <li class="important">Importante: Las columnas de notas que desees que la aplicación lea deben estar entre asteriscos. Ejemplo: <code>*Nota Teoría*</code>.</li>
+                        <li><strong>Actividad del chat:</strong> Visualiza los días en los que hubo interacciones en el chat seleccionado.</li>
+                        <li><strong>Mensajes diarios:</strong> Muestra un gráfico con el número de mensajes enviados diariamente.</li>
                     </ul>
                 </li>
-                <li><strong>Ejemplo de estructura</strong>:</li>
-            </ul>
-
-            <table>
-                <thead>
-                    <tr>
-                        <th>FILENAME</th>
-                        <th>*Nota Teoría*</th>
-                        <th>*Nota Práctica*</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Juan Pérez</td>
-                        <td>8.5</td>
-                        <td>9</td>
-                    </tr>
-                    <tr>
-                        <td>María García</td>
-                        <td>7.5</td>
-                        <td>8.8</td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <h3>3.2 Completa los datos en el Excel</h3>
-            <ul>
-                <li><strong>Rellena las filas</strong> con los nombres de los archivos .zip y sus correspondientes notas.</li>
-                <li><strong>Guarda el archivo Excel</strong>. Puedes guardarlo como <code>notas.xlsx</code>.</li>
-            </ul>
-
-            <h2>4. Subir el ZIP a la aplicación web</h2>
-            <ul>
-                <li><strong>Selecciona el archivo ZIP</strong> que acabas de crear (<code>datos_alumnos.zip</code>) y súbelo.</li>
-                <li><strong>Verifica que el archivo se haya subido correctamente</strong> y ya podrás usar el apartado ESTADÍSTICAS y evaluar las conversaciones.</li>
-            </ul>
-
-            <h2>5. Subir el EXCEL a la aplicación web</h2>
-            <ul>
-                <li><strong>Selecciona el archivo excel o .xlsx</strong> que has creado (<code>notas.xlsx</code>) y súbelo.</li>
-                <li><strong>Verifica que el archivo se haya subido correctamente</strong> y ya podrás usar la aplicación correctamente.</li>
-            </ul>
-
-            <h2>Consideraciones finales</h2>
-            <ul>
-                <li><strong>Verifica los nombres de los archivos</strong> y columnas para asegurarte de que coincidan exactamente con lo requerido.</li>
-                <li><strong>Asegúrate de que las notas que deseas analizar</strong> estén en columnas marcadas con asteriscos, de lo contrario, la aplicación no las leerá.</li>
-                <li><strong>Revisa el contenido</strong> del archivo ZIP antes de subirlo para evitar errores en la aplicación.</li>
-            </ul>
-
-            <p>Siguiendo estos pasos, deberías poder crear y subir el archivo ZIP y el EXCEL sin problemas. ¡Buena suerte!<br><br></p>
-
-
-            <h1>Evaluar y calcular atributos</h1>
-            <p>Una vez cargadas las conversaciones correctamente se activarán estas opciones</p>
-
-            <h1>1. Evaluar atributos</h1>
-            <h2>1.1. Evaluar el % de relación y % de conocimiento sobre la asignatura</h2>
-            <ul>
-                <li>Primero, <strong>selecciona "Comenzar evaluación"</strong>. Una vez hecho esto, puedes asignarle a cada alumno el % de relación y conocimiento sobre una asignatura usando las barras de evaluación ubicadas a la derecha y pulsando en "Guardar valores".</li>
-            </ul>
-
-            <h2>1.2. Carga la evaluación desde un archivo</h2>
-            <ul>
-                <li>Tienes la opción de cargar un archivo TXT que contenga la evaluación de los alumnos. Para ello, haz clic en el icono <span class="material-symbols-outlined p-1 icons">upload</span>. El archivo debe tener el siguiente formato:</li>
                 <li>
+                    <strong>Estadísticas:</strong>
                     <ul>
-                        <li><code><strong>JSON:</strong> ["1 Nombre Apellido1 Apellido2.json", "2 Nombre Apellido1 Apellido2.json", ...]</code></li>
-                        <li><code><strong>IA:</strong> ["80, 70", "80, 60", ...]</code></li>
+                        <li>Información relevante de la conversación seleccionada, como la antigüedad del último mensaje o el promedio de mensajes.</li>
                     </ul>
                 </li>
-                <li>En este formato, el primer número representa el porcentaje de relación de las conversaciones con la asignatura, y el segundo número indica el nivel de conocimiento de la asignatura.</li>
-            </ul>
-
-            <h2>1.3. Descarga de evaluación</h2>
-            <ul>
-                <li>Una vez que los alumnos han sido evaluados, puedes descargar la evaluación en un archivo TXT haciendo clic en el icono de descarga <span class="material-symbols-outlined p-1 icons">download</span>.</li>
-            </ul>
-
-            <h1>2. Calcular atributos</h1>
-            <h2>2.1. Calcular el % de relación y % de conocimiento sobre la asignatura</h2>
-            <ul>
-                <li>Primero, <strong>introduce el nombre de la asignatura en el campo correspondiente</strong>. Una vez hecho esto, presiona el icono <span class="material-symbols-outlined p-1 icons">add_circle</span>. Este proceso usa la API de ChatGPT y tarda aproximadamente 30 segundos por cada archivo JSON que lee.</li>
-                <li class="important">Importante: No hagas nada durante este proceso.</li>
-                <li class="important">Ésta práctica consume un total de $0.150 / 1M input tokens. No abusar de ella.</li>
-            </ul>
-
-            <h2>2.2. Carga de atributos desde un archivo</h2>
-            <ul>
-                <li>Tienes la opción de cargar un archivo TXT que contenga los atributos predefinidos. Para ello, haz clic en el icono <span class="material-symbols-outlined p-1 icons">upload</span>. El archivo debe tener el siguiente formato:</li>
                 <li>
+                    <strong>Notas:</strong>
                     <ul>
-                        <li><code><strong>JSON:</strong> ["1 Nombre Apellido1 Apellido2.json", "2 Nombre Apellido1 Apellido2.json", ...]</code></li>
-                        <li><code><strong>IA:</strong> ["80, 70", "80, 60", ...]</code></li>
+                        <li>Si has cargado el archivo Excel con las notas, se mostrarán aquí las notas del alumno seleccionado.</li>
                     </ul>
                 </li>
-                <li>En este formato, el primer número representa el porcentaje de relación de las conversaciones con la asignatura, y el segundo número indica el nivel de conocimiento de la asignatura.</li>
-            </ul>
-
-            <h2>2.3. Descarga de atributos</h2>
-            <ul>
-                <li>Una vez que los atributos han sido calculados o cargados, puedes descargarlos en un archivo TXT haciendo clic en el icono de descarga <span class="material-symbols-outlined p-1 icons">download</span>.</li>
+                <li>
+                    <strong>Valores de evaluación:</strong>
+                    <ul>
+                        <li>Si la conversación ya ha sido evaluada, podrás ver los porcentajes asignados previamente.</li>
+                    </ul>
+                </li>
+                <li>
+                    <strong>Atributos calculados:</strong>
+                    <ul>
+                        <li>Muestra los atributos extraídos automáticamente de la conversación, si ya se han calculado.</li>
+                    </ul>
+                </li>
+                <li>
+                    <strong>Búsqueda en conversaciones:</strong>
+                    <ul>
+                        <li>Incluye un buscador para encontrar palabras o frases específicas dentro de la conversación.</li>
+                    </ul>
+                </li>
             </ul>
         </div>
     </div>

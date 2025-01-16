@@ -63,7 +63,7 @@ function closeCustomModal() {
 
 function ayuda() {
     document.getElementById('help-container').style.display = 'block';
-    document.getElementById('help').style.display = 'block';
+    document.getElementById('ayuda_header').style.display = 'block';
     document.getElementById('index').style.display = 'none';
     document.getElementById('ayuda-link').style.color = '#abebc6';
     document.getElementById('inicio-link').style.color = 'white';
