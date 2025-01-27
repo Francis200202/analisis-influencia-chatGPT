@@ -1669,7 +1669,7 @@ def analisisIA(asignatura: Asignatura):
     )
 
     json_names = []
-    for filename in os.listdir(UPLOAD_PREDICT):
+    for filename in os.listdir(UPLOAD_DIR):
         if filename.endswith(".json"):
             json_names.append(filename)
 

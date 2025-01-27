@@ -318,12 +318,6 @@ async function analisisIA() {
     loadingIndicator.style.display = 'block';
     document.getElementById('atrib-calc').style.display = 'none';
 
-    // Desplazar el contenedor hacia el final
-            document.getElementById('index').scrollTo({
-                top: 140,
-                behavior: 'smooth'
-            });
-
     console.log(asignatura);
 
     try {
