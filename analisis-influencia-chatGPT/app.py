@@ -12,6 +12,7 @@ from datetime import datetime
 from markdown import markdown
 from collections import defaultdict
 from openai import OpenAI
+from dotenv import load_dotenv
 import statistics
 import os
 import pandas as pd
@@ -56,6 +57,15 @@ UPLOAD_DIR = Path("data/extracted_files")
 UPLOAD_EXCEL = Path("data/excel")
 RESULTS_DIR = Path("data/results")
 UPLOAD_PREDICT = Path("data/files_for_predict")
+
+# Cargar las variables de entorno desde el archivo .env
+load_dotenv()
+
+# Obtener la clave de la variable de entorno
+api_key = os.getenv("OPENAI_API_KEY")
+
+# Modelo de ChatGPT que se va a usar al calcular atributos
+chatGPTmodel = "gpt-4o-mini-2024-07-18"
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -1675,8 +1685,7 @@ def analisisIA(asignatura: Asignatura):
 
     print(json_names)
 
-    client = OpenAI(api_key="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")
-
+    client = OpenAI(api_key=api_key)
     json_files = []
     results_IA = []
 
@@ -1710,7 +1719,7 @@ def analisisIA(asignatura: Asignatura):
         else:
             json_files.append(json_load)
             response = client.chat.completions.create(
-                model="gpt-4o-mini-2024-07-18",  # o el modelo que prefieras gpt-4o-mini-2024-07-18
+                model=chatGPTmodel,
                 messages=[
                     {"role": "system", "content": "Eres un asistente que recuerda el contexto."},
                     {"role": "user", "content": messages_decode},
@@ -1816,7 +1825,7 @@ def obtener_valores_ia():
         if filename.endswith(".json"):
             json_names.append(filename)
 
-    client = OpenAI(api_key="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")
+    client = OpenAI(api_key=api_key)
 
     json_files = []
     results_IA = []
@@ -1853,7 +1862,7 @@ def obtener_valores_ia():
         else:
             json_files.append(json_load)
             response = client.chat.completions.create(
-                model="gpt-4o-mini-2024-07-18",  # o el modelo que prefieras gpt-4o-mini-2024-07-18
+                model=chatGPTmodel,
                 messages=[
                     {"role": "system", "content": "Eres un asistente que recuerda el contexto."},
                     {"role": "user", "content": messages_decode},
