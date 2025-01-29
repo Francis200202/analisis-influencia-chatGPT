@@ -539,13 +539,13 @@ def get_notes():
     xlsx_files = list(UPLOAD_EXCEL.glob("*.xlsx"))
     if not xlsx_files:
         print("El archivo no existe en la ruta especificada.")
-        return None
+        return JSONResponse(content={"error": "Archivo no encontrado"}, status_code=404)
 
     archivo_excel = xlsx_files[0]
     
     if not os.path.exists(archivo_excel):
         print("El archivo no existe en la ruta especificada.")
-        return None
+        return JSONResponse(content={"error": "Archivo no encontrado"}, status_code=404)
     else:
         print("El archivo existe. Intentando leer...")
         df = pd.read_excel(archivo_excel)
@@ -567,6 +567,9 @@ def get_notes():
     for col in df.columns:
         if col.startswith('*') and col.endswith('*'):  # Identificar las columnas entre asteriscos
             nota_teoria = df.iloc[selected_index][col]
+             # Convertir valores de numpy a tipos nativos de Python
+            if isinstance(nota_teoria, np.generic):
+                nota_teoria = nota_teoria.item()
             notas_dict[col.strip('*')] = nota_teoria  # Añadir al diccionario, removiendo asteriscos del nombre
 
     print('Notas encontradas:', notas_dict)

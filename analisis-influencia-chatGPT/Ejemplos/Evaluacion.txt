@@ -1,0 +1,14 @@
+1 Nombre Apellido1 Apellido2.json: {"relacion":20,"conocimiento":20}
+10 Nombre Apellido1 Apellido2.json: {"relacion":40,"conocimiento":30}
+11 Nombre Apellido1 Apellido2.json: {"relacion":70,"conocimiento":60}
+12 Nombre Apellido1 Apellido2.json: {"relacion":50,"conocimiento":80}
+13 Nombre Apellido1 Apellido2.json: {"relacion":80,"conocimiento":75}
+14 Nombre Apellido1 Apellido2.json: {"relacion":80,"conocimiento":85}
+2 Nombre Apellido1 Apellido2.json: {"relacion":90,"conocimiento":80}
+3 Nombre Apellido1 Apellido2.json: {"relacion":84,"conocimiento":69}
+4 Nombre Apellido1 Apellido2.json: {"relacion":90,"conocimiento":90}
+5 Nombre Apellido1 Apellido2.json: {"relacion":90,"conocimiento":82}
+6 Nombre Apellido1 Apellido2.json: {"relacion":86,"conocimiento":94}
+7 Nombre Apellido1 Apellido2.json: {"relacion":69,"conocimiento":76}
+8 Nombre Apellido1 Apellido2.json: {"relacion":56,"conocimiento":50}
+9 Nombre Apellido1 Apellido2.json: {"relacion":60,"conocimiento":63}
