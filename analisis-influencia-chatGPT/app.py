@@ -25,7 +25,6 @@ import shutil
 
 from history import load_conversations
 from utils import time_group, human_readable_time
-from llms import load_create_embeddings, search_similar, TYPE_CONVERSATION, TYPE_MESSAGE
 
 from pydantic import BaseModel
 from typing import List
@@ -49,10 +48,8 @@ from xgboost import XGBRegressor
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-DB_EMBEDDINGS = "data/embeddings.db"
+# Definición de rutas para almacenamiento de datos
 DB_SETTINGS = "data/settings.db"
-
 UPLOAD_DIR = Path("data/extracted_files")
 UPLOAD_EXCEL = Path("data/excel")
 RESULTS_DIR = Path("data/results")
@@ -67,7 +64,7 @@ api_key = os.getenv("OPENAI_API_KEY")
 # Modelo de ChatGPT que se va a usar al calcular atributos
 chatGPTmodel = "gpt-4o-mini-2024-07-18"
 
-# Initialize FastAPI app
+# Inicializar FastAPI app
 app = FastAPI()
 api_app = FastAPI(title="API")
 
@@ -76,6 +73,7 @@ evaluacion_dict = {}
 evaluacion_dict_predict = {}
 hayResultados = 0
 
+# Definición de modelos Pydantic
 class ValoresInput(BaseModel):
     relacion: int
     conocimiento: int
@@ -101,10 +99,10 @@ class NombreInput(BaseModel):
     nombre: str
 
 
+# Evento de inicio para limpiar directorios temporales
 @app.on_event("startup")
 async def startup_event():
     logger.info("Starting up and cleaning the upload directory.")
-    # Limpiar la carpeta de destino al iniciar la aplicación
     if UPLOAD_DIR.exists():
         shutil.rmtree(UPLOAD_DIR)
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -113,46 +111,15 @@ async def startup_event():
         shutil.rmtree(UPLOAD_EXCEL)
     UPLOAD_EXCEL.mkdir(parents=True, exist_ok=True)
 
-@api_app.post("/upload-zip")
-async def upload_zip(file: UploadFile = File(...)):
-    global hayResultados
-    hayResultados = 0
 
-    if not file.filename.endswith(".zip"):
-        raise HTTPException(status_code=400, detail="Sólo se permiten archivos zip. Consultar 'AYUDA'")
-    
-    # Eliminar el contenido existente en la carpeta de destino
-    if UPLOAD_DIR.exists():
-        shutil.rmtree(UPLOAD_DIR)
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-
-    # Eliminar el contenido existente en la carpeta que contiene el excel de notas
-    if UPLOAD_EXCEL.exists():
-        shutil.rmtree(UPLOAD_EXCEL)
-    UPLOAD_EXCEL.mkdir(parents=True, exist_ok=True)
-
-    # Guardar el archivo zip temporalmente
-    temp_zip_path = UPLOAD_DIR / file.filename
-
-    with open(temp_zip_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    
-    # Extraer el archivo zip
-    with zipfile.ZipFile(temp_zip_path, "r") as zip_ref:
-        zip_ref.extractall(UPLOAD_DIR)
-
-    # Eliminar el archivo zip temporal
-    temp_zip_path.unlink()
-
-    return {"detail": "Archivo cargado y extraído exitosamente"}
-
+# Función para extraer archivos ZIP anidados en carpetas
 def extract_nested_zip(file_path, extract_to):
-    # Función que extrae archivos .zip anidados en carpetas
     with zipfile.ZipFile(file_path, 'r') as zip_ref:
         zip_ref.extractall(extract_to)
 
+
+# Función que busca y extrae archivos conversations.json en directorios y archivos comprimidos anidados.
 def search_conversations_json(directory, destination_folder):
-    # Función que busca y extrae archivos conversations.json en directorios y archivos comprimidos anidados.
     for root, dirs, files in os.walk(directory):
         # Revisar todos los archivos en el directorio actual
         for file in files:
@@ -173,8 +140,11 @@ def search_conversations_json(directory, destination_folder):
                 # Llamada recursiva para buscar en el nuevo directorio extraído
                 search_conversations_json(nested_extract_path, destination_folder)
 
+
+# Permite cargar un archivo ZIP y extraer los archivos conversations.json
 @api_app.post("/upload-zip2")
 async def upload_zip2(file: UploadFile = File(...)):
+    global evaluacion_dict
     global hayResultados
     hayResultados = 0
 
@@ -190,6 +160,9 @@ async def upload_zip2(file: UploadFile = File(...)):
     if UPLOAD_EXCEL.exists():
         shutil.rmtree(UPLOAD_EXCEL)
     UPLOAD_EXCEL.mkdir(parents=True, exist_ok=True)
+
+    # Eliminar evaluación existente
+    evaluacion_dict = {}
 
     # Guardar el archivo zip cargado temporalmente
     temp_zip_path = UPLOAD_DIR / file.filename
@@ -212,6 +185,8 @@ async def upload_zip2(file: UploadFile = File(...)):
         "isUploadDirEmpty": is_upload_dir_empty
     }
 
+
+# Permite subir un archivo excel y verificar si tiene una estructura adecuada.
 @api_app.post("/upload-excel")
 async def upload_excel(file: UploadFile = File(...)):
     # Eliminar el contenido existente en la carpeta de destino
@@ -260,6 +235,7 @@ async def upload_excel(file: UploadFile = File(...)):
     json_column = df['FILENAME']
     json_names = json_column.dropna().tolist()
 
+    # Valida que los archivos JSON mencionados en la columna 'FILENAME' existan.
     for json_name in json_names:
         json_path = UPLOAD_DIR / (json_name + '.json')
         if not json_path.exists():
@@ -268,6 +244,8 @@ async def upload_excel(file: UploadFile = File(...)):
 
     return {"detail": "Archivo cargado y extraído exitosamente"}
 
+
+# Verificar si las carpetas están vacías
 @api_app.get("/check-folder-empty")
 def check_folder_empty():
     # Verifica si ambas carpetas están vacías
@@ -280,6 +258,7 @@ def check_folder_empty():
         "isUploadExcelEmpty": is_upload_excel_empty
     }
 
+
 # Obtener lista de archivos JSON, es decir, las conversaciones de los alumnos
 @api_app.get("/json-files")
 def get_json_files():
@@ -289,7 +268,8 @@ def get_json_files():
             json_files.append(filename)
     return {"json_files": json_files}
 
-# Prediccion
+
+# Obtener la lista de archivos JSON en la carpeta de predicción
 @api_app.get("/json-files-predict")
 def get_json_files_predict():
     json_files = []
@@ -298,11 +278,13 @@ def get_json_files_predict():
             json_files.append(filename)
     return {"json_files": json_files}
 
+
+# Cargar conversaciones desde un archivo JSON
 @api_app.get("/load-conversations")
 async def load_conversations_from_file(path: str = Query(..., title="File Path")):
     global conversations  # Accede a la variable conversations global
     global JSON_Selected
-
+    # Accede a la variable global 'conversations' y la actualiza con las conversaciones que el usuario selecciona
     try:
         JSON_Selected = path
         path = "data/extracted_files/" + path
@@ -312,12 +294,13 @@ async def load_conversations_from_file(path: str = Query(..., title="File Path")
     except Exception as e:
         return {"error": str(e)}
 
-# Prediccion
+
+# Cargar conversaciones desde un archivo JSON en la carpeta de predicción
 @api_app.get("/load-conversations-predict")
 async def load_conversations_from_file_predict(path: str = Query(..., title="File Path")):
     global conversations_predict  # Accede a la variable conversations global
     global JSON_Selected_predict
-
+    # Accede a la variable global 'conversations_predict' y la actualiza con las conversaciones que el usuario selecciona
     try:
         JSON_Selected_predict = path
         path = "data/files_for_predict/" + path
@@ -327,17 +310,18 @@ async def load_conversations_from_file_predict(path: str = Query(..., title="Fil
     except Exception as e:
         return {"error": str(e)}
 
-# All conversation items
+
+# Endpoint para obtener las conversaciones
 @api_app.get("/conversations")
 def get_conversations():
-    # Get favorites
+    # Recupera las conversaciones marcadas como favoritas desde la base de datos
     conn = connect_settings_db()
     cursor = conn.cursor()
     cursor.execute("SELECT conversation_id FROM favorites WHERE is_favorite = 1")
     rows = cursor.fetchall()
     favorite_ids = [row[0] for row in rows]
     conn.close()
-
+    # Formatea los datos de las conversaciones, incluyendo si son favoritas o no
     conversations_data = [{
         "group": time_group(conv.created),
         "id": conv.id, 
@@ -346,19 +330,21 @@ def get_conversations():
         "total_length": human_readable_time(conv.total_length, short=True),
         "is_favorite": conv.id in favorite_ids
         } for conv in conversations]
+    # Retorna una lista de conversaciones en formato JSON
     return JSONResponse(content=conversations_data)
 
-# Prediccion
+
+# Endpoint para obtener las conversaciones (carpeta de predicción)
 @api_app.get("/conversations-predict")
 def get_conversations_predict():
-    # Get favorites
+    # Recupera las conversaciones marcadas como favoritas desde la base de datos
     conn = connect_settings_db()
     cursor = conn.cursor()
     cursor.execute("SELECT conversation_id FROM favorites WHERE is_favorite = 1")
     rows = cursor.fetchall()
     favorite_ids = [row[0] for row in rows]
     conn.close()
-
+    # Formatea los datos de las conversaciones, incluyendo si son favoritas o no
     conversations_data = [{
         "group": time_group(conv.created),
         "id": conv.id, 
@@ -367,40 +353,47 @@ def get_conversations_predict():
         "total_length": human_readable_time(conv.total_length, short=True),
         "is_favorite": conv.id in favorite_ids
         } for conv in conversations_predict]
+    # Retorna una lista de conversaciones en formato JSON
     return JSONResponse(content=conversations_data)
 
 
-# All messages from a specific conversation by its ID
+# Obtiene los mensajes de una conversación específica por su ID
 @api_app.get("/conversations/{conv_id}/messages")
 def get_messages(conv_id: str):
+    # Busca la conversación por su ID en la lista 'conversations'
     conversation = next((conv for conv in conversations if conv.id == conv_id), None)
     if not conversation:
         return JSONResponse(content={"error": "Invalid conversation ID"}, status_code=404)
 
     messages = []
-    prev_created = None  # Keep track of the previous message's creation time
+    prev_created = None  # Mantener el tiempo de creación del mensaje anterior
+
+    # Iterar sobre los mensajes de la conversación
     for msg in conversation.messages:
         if not msg:
             continue
 
-        # If there's a previous message and the time difference is 1 hour or more
+        # Si hay un mensaje anterior y la diferencia de tiempo es de 1 hora o más
         if prev_created and (msg.created - prev_created).total_seconds() >= 3600:
             delta = msg.created - prev_created
-            time_str = human_readable_time(delta.total_seconds())            
+            time_str = human_readable_time(delta.total_seconds())
+            # Agregar un mensaje interno indicando el tiempo transcurrido
             messages.append({
                 "text": f"{time_str} passed", 
                 "role": "internal"
                 })
-
+        
+        # Agregar el mensaje actual
         messages.append({
-            "text": markdown(msg.text),
-            "role": msg.role, 
-            "created": msg.created_str
+            "text": markdown(msg.text), # Convertir el texto a formato Markdown
+            "role": msg.role, # Rol del mensaje
+            "created": msg.created_str # Fecha de creación formateada
         })
 
-        # Update the previous creation time for the next iteration
+        # Actualizar el tiempo de creación del mensaje anterior
         prev_created = msg.created
-
+    
+    # Retornar los mensajes formateados
     response = {
         "conversation_id": conversation.id,
         "messages": messages
@@ -408,37 +401,44 @@ def get_messages(conv_id: str):
 
     return JSONResponse(content=response)
 
-# Prediccion
+
+# Obtener los mensajes de una conversación de predicción específica por su ID
 @api_app.get("/conversations-predict/{conv_id}/messages")
 def get_messages_predict(conv_id: str):
+    # Busca la conversación por su ID en la lista 'conversations_predict'
     conversation = next((conv for conv in conversations_predict if conv.id == conv_id), None)
     if not conversation:
         return JSONResponse(content={"error": "Invalid conversation ID"}, status_code=404)
 
     messages = []
-    prev_created = None  # Keep track of the previous message's creation time
+    prev_created = None  # Mantener el tiempo de creación del mensaje anterior
+
+    # Iterar sobre los mensajes de la conversación
     for msg in conversation.messages:
         if not msg:
             continue
 
-        # If there's a previous message and the time difference is 1 hour or more
+        # Si hay un mensaje anterior y la diferencia de tiempo es de 1 hora o más
         if prev_created and (msg.created - prev_created).total_seconds() >= 3600:
             delta = msg.created - prev_created
-            time_str = human_readable_time(delta.total_seconds())            
+            time_str = human_readable_time(delta.total_seconds())      
+            # Agregar un mensaje interno indicando el tiempo transcurrido
             messages.append({
                 "text": f"{time_str} passed", 
                 "role": "internal"
                 })
 
+        # Agregar el mensaje actual
         messages.append({
-            "text": markdown(msg.text),
-            "role": msg.role, 
-            "created": msg.created_str
+            "text": markdown(msg.text), # Convertir el texto a formato Markdown
+            "role": msg.role, # Rol del mensaje
+            "created": msg.created_str # Fecha de creación formateada
         })
 
-        # Update the previous creation time for the next iteration
+        # Actualizar el tiempo de creación del mensaje anterior
         prev_created = msg.created
 
+    # Retornar los mensajes formateados
     response = {
         "conversation_id": conversation.id,
         "messages": messages
@@ -447,31 +447,41 @@ def get_messages_predict(conv_id: str):
     return JSONResponse(content=response)
 
 
+# Obtiene la actividad de mensajes por día
 @api_app.get("/activity")
 def get_activity():
+    # Diccionario para almacenar la cantidad de mensajes por día
     activity_by_day = defaultdict(int)
 
+    # Recorrer todas las conversaciones
     for conversation in conversations:
+        # Recorrer todos los mensajes de cada conversación
         for message in conversation.messages:
+            # Obtener la fecha del mensaje
             day = message.created.date()
+            # Incrementar el contador de mensajes para ese día
             activity_by_day[day] += 1
     
+    # Ordenar el diccionario por fecha y convertir las fechas a strings
     activity_by_day = {str(k): v for k, v in sorted(dict(activity_by_day).items())}
 
     return JSONResponse(content=activity_by_day)
 
 
+# Obtiene estadísticas generales de las conversaciones
 @api_app.get("/statistics")
 def get_statistics():
-    # Calcular el promedio de mensajes, longitud promedio y dispersion promedio
+    # Inicializar variables para calcular promedios
     n_mensajes = 0
     promedio_longitud_mensaje = 0
     promedio_dispersión = 0
 
+    # Lista para almacenar las longitudes de las conversaciones
     lengths = []
 
+    # Recorrer todas las conversaciones
     for conversation in conversations:
-        # Calculate the min, max, and average lengths
+        # Almacenar la longitud total de la conversación y su ID
         lengths.append((conversation.total_length, conversation.id))
 
         longitud_mensaje = 0
@@ -479,23 +489,29 @@ def get_statistics():
         cont_mensajes_user = 0
         intervalos = []
 
+        # Recorrer todos los mensajes de la conversación
         for i, mensaje in enumerate(conversation.messages):
             if(mensaje.role == 'user'):
+                # Sumar la longitud del mensaje
                 longitud_mensaje += len(mensaje.text)
                 cont_mensajes_user += 1
 
+                # Calcular el intervalo de tiempo entre mensajes
                 if i > 0:
                     intervalo = mensaje.create_time - conversation.messages[i-1].create_time
                     intervalos.append(intervalo)
-
+        
+        # Calcular la longitud promedio de los mensajes del usuario
         if(cont_mensajes_user != 0):
             promedio_longitud_mensaje += longitud_mensaje / cont_mensajes_user
 
+        # Calcular la dispersión promedio de los intervalos de tiempo
         if len(intervalos) > 0:
             media_intervalos = sum(intervalos) / len(intervalos)
             desviacion_media = sum(abs(intervalo - media_intervalos) for intervalo in intervalos) / len(intervalos)
             promedio_dispersión += desviacion_media
 
+    # Calcular promedios
     if(len(conversations) != 0):
         promedio = float(n_mensajes / len(conversations))
         longitud_promedio = float(promedio_longitud_mensaje / len(conversations))
@@ -505,9 +521,10 @@ def get_statistics():
         longitud_promedio = 0
         dispersion_promedio = 0
 
-    # Sort conversations by length
+    # Ordenar las conversaciones por longitud
     lengths.sort(reverse=True)
 
+    # Calcular la duración mínima, máxima y promedio de las conversaciones
     if lengths:
         min_threshold_seconds = 1
         filtered_min_lengths = [l for l in lengths if l[0] >= min_threshold_seconds]
@@ -518,9 +535,10 @@ def get_statistics():
         min_length = max_length = avg_length = "N/A"
 
 
-    # Get the last chat message timestamp and backup age
+    # Obtener el timestamp del último mensaje y calcular la antigüedad del último chat
     last_chat_timestamp = max(conv.created for conv in conversations)
 
+    # Devolver las estadísticas como una respuesta JSON
     return JSONResponse(content={
         "Antigüedad del último chat": human_readable_time((datetime.now() - last_chat_timestamp).total_seconds()),
         "Último mensaje": last_chat_timestamp.strftime('%d/%m/%Y'),
@@ -534,8 +552,10 @@ def get_statistics():
     })
 
 
+# Obtiene las notas desde un archivo Excel
 @api_app.get("/notes")
 def get_notes():
+    # Buscar archivos Excel en la ruta especificada
     xlsx_files = list(UPLOAD_EXCEL.glob("*.xlsx"))
     if not xlsx_files:
         print("El archivo no existe en la ruta especificada.")
@@ -543,6 +563,7 @@ def get_notes():
 
     archivo_excel = xlsx_files[0]
     
+    # Verificar si el archivo existe
     if not os.path.exists(archivo_excel):
         print("El archivo no existe en la ruta especificada.")
         return JSONResponse(content={"error": "Archivo no encontrado"}, status_code=404)
@@ -561,9 +582,10 @@ def get_notes():
         print(f"No se ha encontrado un alumno asociado al JSON '{JSON_Selected}' en la columna 'FILENAME'.")
         return None
     
-    # Crear el diccionario de notas
+    # Crear un diccionario para almacenar las notas
     notas_dict = {}
     
+    # Recorrer las columnas del archivo Excel
     for col in df.columns:
         if col.startswith('*') and col.endswith('*'):  # Identificar las columnas entre asteriscos
             nota_teoria = df.iloc[selected_index][col]
@@ -577,16 +599,20 @@ def get_notes():
     return notas_dict
 
 
+# Obtiene los atributos calculados por ChatGPT
 @api_app.get("/atributos")
 def get_atributos():
     global hayResultados
     global resultados_IA
 
+    # Diccionario para almacenar los atributos
     atributos_dict = {}
     try:
         if hayResultados == 1:
+            # Buscar el índice del JSON seleccionado
             index = resultados_IA['json'].index(JSON_Selected)
             ia_value = resultados_IA['IA'][index]
+            # Separar los valores de relación y conocimiento
             relacion, conocimiento = ia_value.split(', ')
             atributos_dict['relacion'] = int(relacion)
             atributos_dict['conocimiento'] = int(conocimiento)
@@ -599,10 +625,12 @@ def get_atributos():
     return atributos_dict
 
 
+# Obtiene los valores de evaluación
 @api_app.get("/valorEval")
 def get_valor_evaluacion():
     global evaluacion_dict
 
+    # Diccionario para almacenar los valores de evaluación
     valores_dict = {}
     try:
         if JSON_Selected in evaluacion_dict:
@@ -618,10 +646,11 @@ def get_valor_evaluacion():
     return valores_dict
 
 
-# Search conversations and messages
+# Busca conversaciones y mensajes
 @api_app.get("/search")
 def search_conversations(query: str = Query(..., min_length=3, description="Search query")):
-
+    
+    # Función para agregar resultados de búsqueda a la lista
     def add_search_result(search_results, result_type, conv, msg):
         search_results.append({
             "type": result_type,
@@ -631,33 +660,43 @@ def search_conversations(query: str = Query(..., min_length=3, description="Sear
             "role": msg.role,
             "created": conv.created_str if result_type == "conversation" else msg.created_str,
         })
-
+    
+    # Función para encontrar una conversación por su ID
     def find_conversation_by_id(conversations, id):
         return next((conv for conv in conversations if conv.id == id), None)
 
+    # Función para encontrar un mensaje por su ID
     def find_message_by_id(messages, id):
         return next((msg for msg in messages if msg.id == id), None)
 
+    # Lista para almacenar los resultados de la búsqueda
     search_results = []
 
+    # Recorrer todas las conversaciones
     for conv in conversations:
         query_lower = query.lower()
+        # Buscar la consulta en el título de la conversación
         if (conv.title or "").lower().find(query_lower) != -1:
             add_search_result(search_results, "conversation", conv, conv.messages[0])
 
+        # Buscar la consulta en los mensajes de la conversación
         for msg in conv.messages:
             if msg and msg.text.lower().find(query_lower) != -1:
                 add_search_result(search_results, "message", conv, msg)
-
+        
+        # Limitar los resultados a 10
         if len(search_results) >= 10:
             break
 
+    # Devolver los resultados como una respuesta JSON
     return JSONResponse(content=search_results)
 
-# Prediccion
+
+# Busca conversaciones y mensajes en conversaciones para predecir
 @api_app.get("/search-predict")
 def search_conversations_predict(query: str = Query(..., min_length=3, description="Search query")):
 
+    # Función para agregar resultados de búsqueda a la lista
     def add_search_result(search_results, result_type, conv, msg):
         search_results.append({
             "type": result_type,
@@ -667,68 +706,82 @@ def search_conversations_predict(query: str = Query(..., min_length=3, descripti
             "role": msg.role,
             "created": conv.created_str if result_type == "conversation" else msg.created_str,
         })
-
+    
+    # Función para encontrar una conversación por su ID en las conversaciones para predecir
     def find_conversation_by_id(conversations_predict, id):
         return next((conv for conv in conversations_predict if conv.id == id), None)
 
+    # Función para encontrar un mensaje por su ID
     def find_message_by_id(messages, id):
         return next((msg for msg in messages if msg.id == id), None)
 
+    # Lista para almacenar los resultados de la búsqueda
     search_results = []
 
+    # Recorrer todas las conversaciones
     for conv in conversations_predict:
         query_lower = query.lower()
+        # Buscar la consulta en el título de la conversación
         if (conv.title or "").lower().find(query_lower) != -1:
             add_search_result(search_results, "conversation", conv, conv.messages[0])
-
+        
+        # Buscar la consulta en los mensajes de la conversación
         for msg in conv.messages:
             if msg and msg.text.lower().find(query_lower) != -1:
                 add_search_result(search_results, "message", conv, msg)
-
+        
+        # Limitar los resultados a 10
         if len(search_results) >= 10:
             break
-
+    
+    # Devolver los resultados como una respuesta JSON
     return JSONResponse(content=search_results)
 
 
-# Toggle favorite status
+# Alternar el estado de favorito de una conversación
 @api_app.post("/toggle_favorite")
 def toggle_favorite(conv_id: str):
+    # Conectar a la base de datos
     conn = connect_settings_db()
     cursor = conn.cursor()
     
-    # Check if the conversation_id already exists in favorites
+    # Verificar si la conversación ya está en favoritos
     cursor.execute("SELECT is_favorite FROM favorites WHERE conversation_id = ?", (conv_id,))
     row = cursor.fetchone()
     
     if row is None:
-        # Insert new entry with is_favorite set to True
+        # Insertar nueva entrada con is_favorite establecido en True
         cursor.execute("INSERT INTO favorites (conversation_id, is_favorite) VALUES (?, ?)", (conv_id, True))
         is_favorite = True
     else:
-        # Toggle the is_favorite status
+        # Alternar el estado de is_favorite
         is_favorite = not row[0]
         cursor.execute("UPDATE favorites SET is_favorite = ? WHERE conversation_id = ?", (is_favorite, conv_id))
     
+    # Guardar los cambios y cerrar la conexión
     conn.commit()
     conn.close()
     
+    # Devolver el estado de favorito actualizado
     return {"conversation_id": conv_id, "is_favorite": is_favorite}
 
 
+# Generar datos estadísticos y obtener notas, atributos y coeficientes de correlación
 @api_app.get("/generar_datos")
 def generar_datos():
-    # Lógica para generar los datos
+    # Variables globales para almacenar datos y resultados
     global data_global
     global hayResultados
     global resultados_IA
     global evaluacion_dict
 
+    # Listas para almacenar promedios y notas
     promedio = []
     longitud_promedio = []
     dispersion_promedio = []
     notass = []
     
+    # Buscar archivos Excel en la ruta especificada
     xlsx_files = list(UPLOAD_EXCEL.glob("*.xlsx"))
     archivo_excel = xlsx_files[0]
     if not os.path.exists(archivo_excel):
@@ -737,13 +790,17 @@ def generar_datos():
         print("El archivo existe. Intentando leer...")
         df = pd.read_excel(archivo_excel)
         print("Archivo leído correctamente.")
+
+    # Obtener la columna de nombres de archivos JSON
     json_column = df['FILENAME']
     
+    # Obtener los nombres de los archivos JSON
     json_names = json_column.dropna().tolist()
     print(json_names)
 
     json_files = []
     
+    # Procesar cada archivo JSON
     for jsonn in json_names:
         n_mensajes = 0
         promedio_longitud_mensaje = 0
@@ -753,33 +810,39 @@ def generar_datos():
         json_files.append(jsonn + '.json')
         aux_conversations = load_conversations(path)
 
+        # Iterar sobre las conversaciones para calcular estadísticas
         for conversation in aux_conversations:
             longitud_mensaje = 0
-            n_mensajes += len(conversation.messages)
+            n_mensajes += len(conversation.messages) # Contar el número de mensajes
             cont_mensajes_user = 0
             intervalos = []
 
+            # Iterar sobre los mensajes
             for i, mensaje in enumerate(conversation.messages):
-                if(mensaje.role == 'user'):
-                    longitud_mensaje += len(mensaje.text)
+                if(mensaje.role == 'user'): # Solo considerar mensajes del usuario
+                    longitud_mensaje += len(mensaje.text) # Sumar la longitud del mensaje
                     cont_mensajes_user += 1
 
                     if i > 0:
+                        # Calcular el intervalo de tiempo entre mensajes consecutivos
                         intervalo = mensaje.create_time - conversation.messages[i-1].create_time
                         intervalos.append(intervalo)
 
             if(cont_mensajes_user != 0):
+                # Calcular la longitud promedio de los mensajes del usuario
                 promedio_longitud_mensaje += longitud_mensaje / cont_mensajes_user
 
             if len(intervalos) > 0:
+                # Calcular la dispersión promedio de los intervalos de tiempo
                 media_intervalos = sum(intervalos) / len(intervalos)
                 desviacion_media = sum(abs(intervalo - media_intervalos) for intervalo in intervalos) / len(intervalos)
                 promedio_dispersión += desviacion_media
 
+        # Calcular promedios para cada archivo JSON
         if(len(aux_conversations) != 0):
-            promedio.append(float(n_mensajes / len(aux_conversations)))
-            longitud_promedio.append(float(promedio_longitud_mensaje / len(aux_conversations)))
-            dispersion_promedio.append(float(promedio_dispersión / len(aux_conversations)))
+            promedio.append(float(n_mensajes / len(aux_conversations))) # Promedio de mensajes por conversación
+            longitud_promedio.append(float(promedio_longitud_mensaje / len(aux_conversations))) # Longitud promedio de mensajes
+            dispersion_promedio.append(float(promedio_dispersión / len(aux_conversations))) # Dispersión promedio de intervalos
         else:
             promedio.append(0)
             longitud_promedio.append(0)
@@ -797,7 +860,7 @@ def generar_datos():
     correlation_coefficient_dispersion_promedio = []
     
     global string_columnas
-    string_columnas = []
+    string_columnas = [] # Lista para almacenar nombres de columnas
     
     for columna, notas in vectores_notas.items():
         data = {"promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio": dispersion_promedio, "nota":notas}
@@ -805,19 +868,21 @@ def generar_datos():
 
         string_columnas.append(columna)
 
-        # Verificar que no se obtiene el valor invalido Nan
+        # Calcular correlación entre promedio de mensajes y notas
         aux = df['promedio_mensajes'].corr(df['nota'])
         if np.isnan(aux):
             correlation_coefficient_promedio_mensajes.append('null')
         else:
             correlation_coefficient_promedio_mensajes.append(aux)
 
+        # Calcular correlación entre longitud promedio de mensajes y notas
         aux = df['longitud_promedio'].corr(df['nota'])
         if np.isnan(aux):
             correlation_coefficient_longitud_promedio.append('null')
         else:
             correlation_coefficient_longitud_promedio.append(aux)
 
+        # Calcular correlación entre dispersión promedio y notas
         aux = df['dispersion_promedio'].corr(df['nota'])
         if np.isnan(aux):
             correlation_coefficient_dispersion_promedio.append('null')
@@ -827,10 +892,12 @@ def generar_datos():
 
     hayEvaluacion = 0
     if len(evaluacion_dict) > 0:
-        hayEvaluacion = 1
+        # Procesar resultados de evaluacion si están disponibles
+        hayEvaluacion = 1 # Indicar que hay datos de evaluación disponibles
         dict_json_notas = {"filename":json_files, "nota":vectores_notas}
         eval_dict = {'json': [], 'relacion': [], 'conocimiento': []}
 
+        # Ordenar el diccionario de evaluación según los archivos JSON
         evaluacion_dict_ordenado = OrderedDict(
             (nombre, evaluacion_dict[nombre]) for nombre in json_files if nombre in evaluacion_dict
         )
@@ -844,6 +911,7 @@ def generar_datos():
                 'conocimiento': [],
                 'nota': {col: [] for col in columnas_con_asteriscos}
         }
+        # Iterar sobre evaluacion_dict para agregar los valores a dict_evaluacion_con_notas
         for nombre_json, valores in evaluacion_dict.items():
             if nombre_json in dict_json_notas['filename']:
                 # Obtener el índice del json_file en dict_json_notas
@@ -883,10 +951,12 @@ def generar_datos():
                 correlation_coefficient_conocimiento_eval.append(aux)
 
         if hayResultados == 0:
+            # Preparar datos para la respuesta si no hay resultados de atributos calculados por IA
             datos = {"filename":json_files, "promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio":dispersion_promedio, "nota":vectores_notas, "cc_pm":correlation_coefficient_promedio_mensajes, "cc_lp":correlation_coefficient_longitud_promedio, "cc_dp": correlation_coefficient_dispersion_promedio, "evaluacion_results": dict_evaluacion_con_notas, "hayEvaluacion":hayEvaluacion, "hayResultados":hayResultados, 'cc_r_e': correlation_coefficient_relacion_eval, 'cc_c_e': correlation_coefficient_conocimiento_eval}
             data_global = {"filename":json_files, "promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio":dispersion_promedio, "nota":vectores_notas, "evaluacion_results": dict_evaluacion_con_notas, "hayEvaluacion":hayEvaluacion, "hayResultados":hayResultados}
 
     if hayResultados == 1:
+        # Procesar atributos calculados si están disponibles
         dict_json_notas = {"filename":json_files, "nota":vectores_notas}
         atributos_dict = {'json': [], 'relacion': [], 'conocimiento': []}
 
@@ -964,31 +1034,38 @@ def generar_datos():
                 correlation_coefficient_conocimiento.append(aux)
 
         if hayEvaluacion == 0:
+            # Preparar datos para la respuesta si no hay evaluación 
             datos = {"filename":json_files, "promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio":dispersion_promedio, "nota":vectores_notas, "cc_pm":correlation_coefficient_promedio_mensajes, "cc_lp":correlation_coefficient_longitud_promedio, "cc_dp": correlation_coefficient_dispersion_promedio, "hayEvaluacion":hayEvaluacion, "atributos_results": dict_atributos_con_notas, "hayResultados":hayResultados, 'cc_r': correlation_coefficient_relacion, 'cc_c': correlation_coefficient_conocimiento}
             data_global = {"filename":json_files, "promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio":dispersion_promedio, "nota":vectores_notas, "hayEvaluacion":hayEvaluacion, "atributos_results": dict_atributos_con_notas, "hayResultados":hayResultados}
 
     if hayEvaluacion == 1 and hayResultados == 1:
+        # Preparar datos para la respuesta si hay evaluación y atributos calculados por IA
         datos = {"filename":json_files, "promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio":dispersion_promedio, "nota":vectores_notas, "cc_pm":correlation_coefficient_promedio_mensajes, "cc_lp":correlation_coefficient_longitud_promedio, "cc_dp": correlation_coefficient_dispersion_promedio, "evaluacion_results": dict_evaluacion_con_notas, "hayEvaluacion":hayEvaluacion, 'cc_r_e': correlation_coefficient_relacion_eval, 'cc_c_e': correlation_coefficient_conocimiento_eval, "atributos_results": dict_atributos_con_notas, "hayResultados":hayResultados, 'cc_r': correlation_coefficient_relacion, 'cc_c': correlation_coefficient_conocimiento}
         data_global = {"filename":json_files, "promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio":dispersion_promedio, "nota":vectores_notas, "evaluacion_results":dict_evaluacion_con_notas, "hayEvaluacion":hayEvaluacion, "atributos_results": dict_atributos_con_notas, "hayResultados":hayResultados}
 
     if hayEvaluacion == 0 and hayResultados == 0:
+        # Preparar datos para la respuesta si no hay evaluación ni atributos calculados por IA
         datos = {"filename":json_files, "promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio":dispersion_promedio, "nota":vectores_notas, "cc_pm":correlation_coefficient_promedio_mensajes, "cc_lp":correlation_coefficient_longitud_promedio, "cc_dp": correlation_coefficient_dispersion_promedio, "hayEvaluacion":hayEvaluacion, "hayResultados":hayResultados}
         data_global = {"filename":json_files, "promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio":dispersion_promedio, "nota":vectores_notas, "hayEvaluacion":hayEvaluacion, "hayResultados":hayResultados}
     print('\n\nDatos: ', datos)
     return JSONResponse(content=datos)
 
 
+# Obtiene el conjunto de características que se pueden usar para generar un modelo de predicción
 @api_app.get("/obtener_caracteristicas")
 def obtener_caracteristicas():
     global hayResultados
     global evaluacion_dict
 
+    # Genenerar los datos necesarios
     generar_datos()
 
+    # Verificar si hay datos de evaluación
     hayEvaluacion = 0
     if len(evaluacion_dict) > 0:
         hayEvaluacion = 1
 
+    # Determinar que características devolver
     if hayResultados == 1 and hayEvaluacion == 0:
         datos = {"caracteristicas": ['(IA) - % Relación con la asignatura', '(IA) - % Conocimiento sobre la asignatura'], "etiquetas": string_columnas, "hayEvaluacion":hayEvaluacion, "hayResultados": hayResultados}
     elif hayResultados == 0 and hayEvaluacion == 1:
@@ -1001,6 +1078,7 @@ def obtener_caracteristicas():
     return JSONResponse(content=datos)
 
 
+# Realiza el entrenamiento de un modelo de predicción
 @api_app.post("/entrenar")
 def entrenar(datos: EntrenamientoRequest):
     # Procesas los datos recibidos
@@ -1009,6 +1087,7 @@ def entrenar(datos: EntrenamientoRequest):
     porcentaje_test = datos.porcentaje_prueba / 100
     accuracy = 0
 
+    # Crear un diccionario con los datos globales necesarios para el entrenamiento
     dict = {
             'filename': data_global['filename'],
             'promedio_mensajes': data_global['promedio_mensajes'],
@@ -1019,10 +1098,13 @@ def entrenar(datos: EntrenamientoRequest):
     
     print(porcentaje_test)
 
+    # Inicializar listas para almacenar las características de relación y conocimiento
     relacion = []
     conocimiento = []
     relacionIA = []
     conocimientoIA = []
+
+    # Verificar si se deben incluir características de evaluación y atributos de IA
     if ('% Relación con la asignatura' in caracteristicas or '% Conocimiento sobre la asignatura' in caracteristicas) and ('(IA) - % Relación con la asignatura' in caracteristicas or '(IA) - % Conocimiento sobre la asignatura' in caracteristicas):
         # Listas de archivos en evaluación y atributos
         archivos_evaluacion = set(data_global['evaluacion_results']['json'])
@@ -1034,7 +1116,7 @@ def entrenar(datos: EntrenamientoRequest):
         # Filtrar 'filename' para obtener solo archivos en común
         indices_comunes = [i for i, filename in enumerate(dict['filename']) if filename in archivos_comunes]
 
-        # Filtramos los datos en `dict` usando solo los índices comunes
+        # Filtramos los datos en 'dict' usando solo los índices comunes
         for key in dict.keys():
             if key != 'nota':  # Para las claves que no son 'nota'
                 dict[key] = [value for i, value in enumerate(dict[key]) if i in indices_comunes]
@@ -1042,6 +1124,7 @@ def entrenar(datos: EntrenamientoRequest):
                 for subkey in dict['nota']:
                     dict['nota'][subkey] = [value for i, value in enumerate(dict['nota'][subkey]) if i in indices_comunes]
         
+        # Obtener los datos de relación y conocimiento de los archivos comunes
         relacion = [data_global['evaluacion_results']['relacion'][i] for i in indices_comunes]
         conocimiento = [data_global['evaluacion_results']['conocimiento'][i] for i in indices_comunes]
         relacionIA = [data_global['atributos_results']['relacion'][i] for i in indices_comunes]
@@ -1084,6 +1167,7 @@ def entrenar(datos: EntrenamientoRequest):
         relacionIA = data_global['atributos_results']['relacion']
         conocimientoIA = data_global['atributos_results']['conocimiento']
 
+    # Añadir las características seleccionadas a la lista 'caract'
     if 'Promedio de mensajes' in caracteristicas:
         caract.append(dict['promedio_mensajes'])
     if 'Longitud promedio de mensajes' in caracteristicas:
@@ -1098,19 +1182,19 @@ def entrenar(datos: EntrenamientoRequest):
         caract.append(relacionIA)
     if '(IA) - % Conocimiento sobre la asignatura' in caracteristicas:
         caract.append(conocimientoIA)
-        
-    #for columna in dict['nota']:
-        #if columna in caracteristicas:
-            #caract.append(dict['nota'][columna])
-        
+       
+    # Obtener la etiqueta seleccionada    
     if datos.etiqueta in dict['nota']:
         labels = dict['nota'][datos.etiqueta]
     
+    # Convertir las características y etiqueta a arrays de numpy
     X = np.array(caract).T
     y = np.array(labels)
             
+    # Dividir los datos en conjuntos de entrenamiento y prueba
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=porcentaje_test, random_state=42)
     
+    # Entrenar el modelo según el método seleccionado
     if datos.metodo == 'Algoritmo KNN':
         # Entrenar un KNN (regresión)
         knn = KNeighborsRegressor()
@@ -1154,7 +1238,7 @@ def entrenar(datos: EntrenamientoRequest):
         accuracy = mlp_accuracy
         print("RMSE de la red neuronal MLP:", mlp_accuracy)
     
-            
+    # Devolver los resultados del entrenamiento        
     return {
         "mensaje": "Datos recibidos correctamente",
         "metodo": datos.metodo,
@@ -1165,9 +1249,12 @@ def entrenar(datos: EntrenamientoRequest):
     }
 
 
+# Permite cargar un archivo ZIP, extraer los archivos conversations.json y almacenarlos en una carpeta temporal
 @api_app.post("/upload-zip-prediction")
 async def upload_zip_prediction(file: UploadFile = File(...)):
+    global evaluacion_dict_predict
 
+    # Verificar que el archivo sea un ZIP
     if not file.filename.endswith(".zip"):
         raise HTTPException(status_code=400, detail="Sólo se permiten archivos zip. Consultar 'AYUDA'")
     
@@ -1175,6 +1262,9 @@ async def upload_zip_prediction(file: UploadFile = File(...)):
     if UPLOAD_PREDICT.exists():
         shutil.rmtree(UPLOAD_PREDICT)
     UPLOAD_PREDICT.mkdir(parents=True, exist_ok=True)
+
+    # Eliminar evaluación existente
+    evaluacion_dict_predict = {}
 
     # Guardar el archivo zip cargado temporalmente
     temp_zip_path = UPLOAD_PREDICT / file.filename
@@ -1191,6 +1281,7 @@ async def upload_zip_prediction(file: UploadFile = File(...)):
     shutil.rmtree(temp_extract_folder)
     temp_zip_path.unlink()
 
+    # Verificar si la carpeta de destino está vacía
     is_upload_dir_empty = not os.listdir(UPLOAD_PREDICT)
 
     return {
@@ -1198,49 +1289,57 @@ async def upload_zip_prediction(file: UploadFile = File(...)):
     }
 
 
+# Obtiene y procesa los datos de los archivos JSON cargados para predecir. Calcula el promedio de mensajes, la longitud promedio de los mensajes y la dispersión promedio
 @api_app.get("/obtener-datos-chats")
 def obtener_datos_chats():
-    # Lógica para generar los datos
+    # Inicializar listas para almacenar las métricas calculadas
+    promedio = [] # Promedio de mensajes
+    longitud_promedio = [] # Longitud promedio de los mensajes
+    dispersion_promedio = [] # Dispersión promedio de los mensajes
 
-    promedio = []
-    longitud_promedio = []
-    dispersion_promedio = []
-
+    # Obtener la lista de archivos JSON en la carpeta UPLOAD_PREDICT
     json_files = []
     for filename in os.listdir(UPLOAD_PREDICT):
         if filename.endswith(".json"):
             json_files.append(filename)
     
+    # Procesar cada archivo JSON
     for jsonn in json_files:
-        n_mensajes = 0
+        n_mensajes = 0 # Contador de mensajes
         promedio_longitud_mensaje = 0
         promedio_dispersión = 0
-        path = UPLOAD_PREDICT / jsonn
-        aux_conversations = load_conversations(path)
+        path = UPLOAD_PREDICT / jsonn # Ruta del archivo JSON
+        aux_conversations = load_conversations(path) # Cargar conversaciones del archivo JSON
 
+        # Iterar sobre cada conversación
         for conversation in aux_conversations:
             longitud_mensaje = 0
             n_mensajes += len(conversation.messages)
             cont_mensajes_user = 0
             intervalos = []
 
+            # Iterar sobre cada mensaje
             for i, mensaje in enumerate(conversation.messages):
-                if(mensaje.role == 'user'):
+                if(mensaje.role == 'user'): # Solo procesar mensajes del usuario
                     longitud_mensaje += len(mensaje.text)
-                    cont_mensajes_user += 1
+                    cont_mensajes_user += 1 # Contar mensajes del usuario
 
+                    # Calcular el intervalo entre mensajes
                     if i > 0:
                         intervalo = mensaje.create_time - conversation.messages[i-1].create_time
                         intervalos.append(intervalo)
-
+            
+            # Calcular la longitud promedio de los mensajes del usuario
             if(cont_mensajes_user != 0):
                 promedio_longitud_mensaje += longitud_mensaje / cont_mensajes_user
-
+            
+            # Calcular la dispersión promedio de los intervalos entre mensajes
             if len(intervalos) > 0:
                 media_intervalos = sum(intervalos) / len(intervalos)
                 desviacion_media = sum(abs(intervalo - media_intervalos) for intervalo in intervalos) / len(intervalos)
                 promedio_dispersión += desviacion_media
-
+        
+        # Calcular métricas promedio para el archivo JSON actual
         if(len(aux_conversations) != 0):
             promedio.append(float(n_mensajes / len(aux_conversations)))
             longitud_promedio.append(float(promedio_longitud_mensaje / len(aux_conversations)))
@@ -1249,26 +1348,29 @@ def obtener_datos_chats():
             promedio.append(0)
             longitud_promedio.append(0)
             dispersion_promedio.append(0)
- 
+    
+    # Datos calculados
     datos = {"filename":json_files, "promedio_mensajes":promedio, "longitud_promedio":longitud_promedio, "dispersion_promedio":dispersion_promedio}
     
     
     return JSONResponse(content=datos)
 
 
+# Realiza predicciones basada en caracteristicas seleccionadas por el usuario
 @api_app.post("/predecir")
 def predecir(datos: PrediccionDatos):
-    # Procesas los datos recibidos
-    caract = []
-    caracteristicas = datos.caracteristicas
-    porcentaje_test = datos.porcentaje_prueba / 100
-    accuracy = 0
-    valores = np.array(datos.valores)
-    valores_2d = valores.reshape(1, -1)
+    # Inicialización de listas y variables
+    caract = [] # Lista para almacenar las características seleccionadas
+    caracteristicas = datos.caracteristicas # Características seleccionadas por el usuario
+    porcentaje_test = datos.porcentaje_prueba / 100 # Porcentaje de datos para prueba
+    accuracy = 0 # Variable para almacenar la precisión del modelo
+    valores = np.array(datos.valores) # Valores de entrada para la predicción
+    valores_2d = valores.reshape(1, -1) # Reformatear los valores para que sean compatibles con el modelo
     
     print(porcentaje_test)
     print(valores_2d)
     
+    # Crear un diccionario con los datos globales para trabajar
     dict = {
             'filename': data_global['filename'],
             'promedio_mensajes': data_global['promedio_mensajes'],
@@ -1277,10 +1379,13 @@ def predecir(datos: PrediccionDatos):
             'nota': {k: v[:] for k, v in data_global['nota'].items()} 
     }
     
+    # Inicialización de listas para almacenar atributos de relación y conocimiento
     relacion = []
     conocimiento = []
     relacionIA = []
     conocimientoIA = []
+
+    # Verificar si se deben incluir atributos de relación y conocimiento (evaluación y/o atributos calculados por IA)
     if ('% Relación con la asignatura' in caracteristicas or '% Conocimiento sobre la asignatura' in caracteristicas) and ('(IA) - % Relación con la asignatura' in caracteristicas or '(IA) - % Conocimiento sobre la asignatura' in caracteristicas):
         # Listas de archivos en evaluación y atributos
         archivos_evaluacion = set(data_global['evaluacion_results']['json'])
@@ -1292,7 +1397,7 @@ def predecir(datos: PrediccionDatos):
         # Filtrar 'filename' para obtener solo archivos en común
         indices_comunes = [i for i, filename in enumerate(dict['filename']) if filename in archivos_comunes]
 
-        # Filtramos los datos en `dict` usando solo los índices comunes
+        # Filtramos los datos en 'dict' usando solo los índices comunes
         for key in dict.keys():
             if key != 'nota':  # Para las claves que no son 'nota'
                 dict[key] = [value for i, value in enumerate(dict[key]) if i in indices_comunes]
@@ -1300,6 +1405,7 @@ def predecir(datos: PrediccionDatos):
                 for subkey in dict['nota']:
                     dict['nota'][subkey] = [value for i, value in enumerate(dict['nota'][subkey]) if i in indices_comunes]
         
+        # Obtener valores de relación y conocimiento de los archivos comunes
         relacion = [data_global['evaluacion_results']['relacion'][i] for i in indices_comunes]
         conocimiento = [data_global['evaluacion_results']['conocimiento'][i] for i in indices_comunes]
         relacionIA = [data_global['atributos_results']['relacion'][i] for i in indices_comunes]
@@ -1307,7 +1413,7 @@ def predecir(datos: PrediccionDatos):
 
 
 
-    # Los vectores deben tener el mismo número de elementos
+    # Si solo se incluyen valores de evaluación
     elif '% Relación con la asignatura' in caracteristicas or '% Conocimiento sobre la asignatura' in caracteristicas:
         # Hay que eliminar los indices correspondientes a los alumnos que no han sido evaluados
         archivos_comunes = set(data_global['evaluacion_results']['json'])
@@ -1325,6 +1431,7 @@ def predecir(datos: PrediccionDatos):
         relacion = data_global['evaluacion_results']['relacion']
         conocimiento = data_global['evaluacion_results']['conocimiento']
 
+    # Si solo se incluyen atributos calculados por IA
     elif '(IA) - % Relación con la asignatura' in caracteristicas or '(IA) - % Conocimiento sobre la asignatura' in caracteristicas:
         # Hay que eliminar los indices correspondientes a los alumnos que no tienen atributos calculados por superar el limite de tokens
         archivos_comunes = set(data_global['atributos_results']['json'])
@@ -1342,6 +1449,7 @@ def predecir(datos: PrediccionDatos):
         relacionIA = data_global['atributos_results']['relacion']
         conocimientoIA = data_global['atributos_results']['conocimiento']
 
+    # Agregar los datos de las características seleccionadas a la lista 'caract'
     if 'Promedio de mensajes' in caracteristicas:
         caract.append(dict['promedio_mensajes'])
     if 'Longitud promedio de mensajes' in caracteristicas:
@@ -1357,18 +1465,18 @@ def predecir(datos: PrediccionDatos):
     if '(IA) - % Conocimiento sobre la asignatura' in caracteristicas:
         caract.append(conocimientoIA)
         
-    #for columna in dict['nota']:
-        #if columna in caracteristicas:
-            #caract.append(dict['nota'][columna])
-        
+    # Obtener la etiqueta seleccionada 
     if datos.etiqueta in dict['nota']:
         labels = dict['nota'][datos.etiqueta]
     
+    # Convertir las características y etiqueta a arrays de numpy
     X = np.array(caract).T
     y = np.array(labels)
-            
+         
+    # Dividir los datos en conjuntos de entrenamiento y prueba
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=porcentaje_test, random_state=42)
     
+    # Entrenar el modelo seleccionado por el usuario
     if datos.metodo == 'Algoritmo KNN':
         # Entrenar un KNN (regresión)
         knn = KNeighborsRegressor()
@@ -1417,7 +1525,7 @@ def predecir(datos: PrediccionDatos):
         print("RMSE de la red neuronal MLP:", mlp_accuracy)
 
 
-
+    # Realizar la predicción con el modelo entrenado
     if 'modelo_entrenado' in locals():
         prediccion = modelo_entrenado.predict(valores_2d)
         print("Prediccion:", prediccion)
@@ -1425,7 +1533,7 @@ def predecir(datos: PrediccionDatos):
     else:
         print("No hay un modelo entrenado disponible para hacer predicciones.")
     
-            
+    # Devolver la respuesta con la predicción y detalles        
     return {
         "mensaje": "Datos recibidos correctamente",
         "prediccion": prediccion,
@@ -1434,12 +1542,15 @@ def predecir(datos: PrediccionDatos):
     }
 
 
+# Permite subir un archivo que contenga una evaluación
 @api_app.post("/uploadEvaluacion")
 async def upload_file_evaluacion(file: UploadFile = File(...)):
     global evaluacion_dict
 
+    # Diccionario temporal para almacenar las evaluaciones del archivo
     dictEv = {}
 
+    # Verificar que el archivo sea de tipo texto plano
     if file.content_type == 'text/plain':
         contents = await file.read()
         # Convertir el contenido del archivo a un string
@@ -1470,9 +1581,11 @@ async def upload_file_evaluacion(file: UploadFile = File(...)):
         json_files_in_dir = set([filename for filename in os.listdir(UPLOAD_DIR) if filename.endswith(".json")])
         missing_files = [json for json in dictEv.keys() if json not in json_files_in_dir]
         
+        # Devolver un error si faltan archivos JSON
         if missing_files:
             return JSONResponse(content={"status": "error", "message": f"Archivos JSON faltantes: {', '.join(missing_files)}"}, status_code=400)
 
+        # Actualizar el diccionario global con la nueva evaluación
         evaluacion_dict = dictEv
         print("Diccionario de evaluaciones:", evaluacion_dict)
 
@@ -1482,6 +1595,7 @@ async def upload_file_evaluacion(file: UploadFile = File(...)):
         return JSONResponse(content={"status": "error", "message": "Tipo de archivo no válido"}, status_code=400)
 
 
+# Obtiene los resultados de la evaluación
 @api_app.get("/obtenerEvaluacion")
 def obtener_resultados():
     global evaluacion_dict
@@ -1490,25 +1604,30 @@ def obtener_resultados():
 
     return JSONResponse(content=evaluacion_dict)
 
-
+# Obtiene los valores de la evaluación de las conversaciones cargadas para predecir
 @api_app.get("/obtener_evaluacion_predict")
 async def obtener_evaluacion_predict():
     global evaluacion_dict_predict
     if len(evaluacion_dict_predict) == 0:
         raise HTTPException(status_code=400, detail="No hay alumnos evaluados")
 
+    # Crear un diccionario para almacenar los valores de relación y conocimiento
     dictEV = {}
     json_files = []
     relacion = []
     conocimiento = []
+
+    # Obtener la lista de archivos JSON
     for filename in os.listdir(UPLOAD_PREDICT):
         if filename.endswith(".json"):
             json_files.append(filename)
     
+    # Recopilar los valores de relación y conocimiento de cada archivo JSON
     for jsonn in json_files:
         relacion.append(evaluacion_dict_predict[jsonn]['relacion'])
         conocimiento.append(evaluacion_dict_predict[jsonn]['conocimiento'])
 
+    # Construir el diccionario de respuesta
     dictEV = {
         "relacion": relacion,
         "conocimiento": conocimiento
@@ -1517,6 +1636,7 @@ async def obtener_evaluacion_predict():
     return JSONResponse(content=dictEV)
 
 
+# Elimina la evaluación
 @api_app.post("/reset-evaluacion")
 async def reset_evaluacion():
     global evaluacion_dict
@@ -1526,36 +1646,46 @@ async def reset_evaluacion():
     return {"mensaje": "Evaluaciones eliminadas", "totalAlumnos": num_archivos_json}
 
 
+# Obtiene el numero de alumnos evaluados del total de alumnos
 @api_app.get("/estado-evaluacion")
 async def estado_evaluacion():
     global evaluacion_dict
+    # Contar el número de alumnos evaluados
     alumnos_evaluados = len(evaluacion_dict)
+    # Contar el número de archivos JSON (total de alumnos)
     num_archivos_json = len([archivo for archivo in os.listdir(UPLOAD_DIR) if archivo.endswith(".json")])
     return {"alumnosEvaluados": alumnos_evaluados, "totalAlumnos": num_archivos_json}
 
 
+# Obtiene el numero de alumnos evaluados del total de alumnos (archivos cargados para predecir)
 @api_app.get("/estado-evaluacion-predict")
 async def estado_evaluacion_predict():
     global evaluacion_dict_predict
+    # Contar el número de alumnos evaluados
     alumnos_evaluados = len(evaluacion_dict_predict)
     print(evaluacion_dict_predict)
+    # Contar el número de archivos JSON (total de alumnos)
     num_archivos_json = len([archivo for archivo in os.listdir(UPLOAD_PREDICT) if archivo.endswith(".json")])
     return {"alumnosEvaluados": alumnos_evaluados, "totalAlumnos": num_archivos_json}
 
 
+# Obtiene los valores de evaluación de un alumno específico
 @api_app.get("/obtener_valor_evaluacion/{nombre}")
 async def obtener_valor_evaluacion(nombre: str):
     global evaluacion_dict
+    # Verificar si el alumno tiene una evaluación almacenada
     if nombre in evaluacion_dict:
         valores = evaluacion_dict[nombre]
         return {"relacion": valores["relacion"], "conocimiento": valores["conocimiento"]}
     else:
         return {"mensaje": "No se encontraron valores guardados para este usuario", "relacion": None, "conocimiento": None}
 
-# Prediccion
+
+# Obtiene los valores de evaluación de un alumno específico (archivos cargados para predecir)
 @api_app.get("/obtener_valor_evaluacion_predict/{nombre}")
 async def obtener_valor_evaluacion_predict(nombre: str):
     global evaluacion_dict_predict
+    # Verificar si el alumno tiene una evaluación almacenada
     if nombre in evaluacion_dict_predict:
         valores = evaluacion_dict_predict[nombre]
         return {"relacion": valores["relacion"], "conocimiento": valores["conocimiento"]}
@@ -1563,6 +1693,7 @@ async def obtener_valor_evaluacion_predict(nombre: str):
         return {"mensaje": "No se encontraron valores guardados para este usuario", "relacion": None, "conocimiento": None}
 
 
+# Obtiene el estado de evaluación de cada archivo JSON
 @api_app.get("/json-files-status")
 async def json_files_status():
     global evaluacion_dict
@@ -1570,7 +1701,8 @@ async def json_files_status():
     status_dict = {name: name in evaluacion_dict for name in evaluacion_dict.keys()}
     return {"status": status_dict}
 
-# Prediccion
+
+# Obtiene el estado de evaluación de cada archivo JSON cargado para predecir
 @api_app.get("/json-files-status-predict")
 async def json_files_status_predict():
     global evaluacion_dict_predict
@@ -1579,6 +1711,7 @@ async def json_files_status_predict():
     return {"status": status_dict}
 
 
+# Guarda los valores de evaluación de un alumno específico
 @api_app.post("/guardar_valor_evaluacion")
 async def guardar_valor_evaluacion(valores: ValoresInput):
     global evaluacion_dict
@@ -1601,7 +1734,8 @@ async def guardar_valor_evaluacion(valores: ValoresInput):
     print(f"Valores guardados: {evaluacion_dict}")
     return {"mensaje": "Valores recibidos correctamente", "valores": valores}
 
-# Prediccion
+
+# Guarda los valores de evaluación de un alumno específico (archivos cargados para predecir)
 @api_app.post("/guardar_valor_evaluacion_predict")
 async def guardar_valor_evaluacion_predict(valores: ValoresInput):
     global evaluacion_dict_predict
@@ -1625,6 +1759,7 @@ async def guardar_valor_evaluacion_predict(valores: ValoresInput):
     return {"mensaje": "Valores recibidos correctamente", "valores": valores}
 
 
+# Elimina los valores de evaluación de un alumno específico
 @api_app.delete("/eliminar_valor_evaluacion")
 async def eliminar_valor_evaluacion(nombre_input: NombreInput):
     global evaluacion_dict
@@ -1639,7 +1774,8 @@ async def eliminar_valor_evaluacion(nombre_input: NombreInput):
         # Lanzar un error si el nombre no existe en el diccionario
         raise HTTPException(status_code=404, detail=f"No se encontraron valores para '{nombre}'")
 
-# Prediccion
+
+# Elimina los valores de evaluación de un alumno específico (archivos cargados para predecir)
 @api_app.delete("/eliminar_valor_evaluacion_predict")
 async def eliminar_valor_evaluacion_predict(nombre_input: NombreInput):
     global evaluacion_dict_predict
@@ -1663,15 +1799,18 @@ def count_tokens(text, model="gpt-3.5-turbo"):
     return len(tokens)
 
 
+# Utiliza la API de OpenAI para analizar las conversaciones y calcular los atributos % de relación con la asignatura y el % de conocimiento sobre la asignatura
 @api_app.post("/analisisIA")
 def analisisIA(asignatura: Asignatura):
     global resultados_IA
     global hayResultados
     global subject
 
+    # Obtener el nombre de la asignatura desde el cuerpo de la solicitud
     asignatura_name = asignatura.asignatura
     subject = asignatura_name
 
+    # Crear el prompt para la API de OpenAI
     prompt = (
         "Analiza la conversación anterior de un alumno con Chat GPT y responde solo con "
         "dos números separados por una coma. El primer número debe indicar el porcentaje de "
@@ -1681,6 +1820,7 @@ def analisisIA(asignatura: Asignatura):
         "No des explicaciones adicionales. Asegurate que el formato sea 'x, y', siendo x e y números"
     )
 
+    # Obtener la lista de archivos JSON
     json_names = []
     for filename in os.listdir(UPLOAD_DIR):
         if filename.endswith(".json"):
@@ -1688,15 +1828,18 @@ def analisisIA(asignatura: Asignatura):
 
     print(json_names)
 
+    # Inicializar el cliente de OpenAI
     client = OpenAI(api_key=api_key)
     json_files = []
     results_IA = []
 
+    # Procesar cada archivo JSON
     for jsonn in json_names:
         path = UPLOAD_DIR / jsonn
         aux_conversations = load_conversations(path)
         json_load = jsonn
 
+        # Crear una lista de mensajes para enviar a la API de OpenAI
         messages = []
         for conversation in aux_conversations:
             for msg in conversation.messages:
@@ -1707,7 +1850,8 @@ def analisisIA(asignatura: Asignatura):
                     "role": msg.role,
                     "text": msg.text
                 })
-
+        
+        # Convertir los mensajes a una cadena JSON
         messages_str = json.dumps(messages, indent=4)
         messages_decode = messages_str.encode().decode('unicode_escape')
 
@@ -1717,10 +1861,12 @@ def analisisIA(asignatura: Asignatura):
         # Contar tokens
         input_tokens = count_tokens(combined_messages)
 
+        # Verificar si el número de tokens excede el límite
         if input_tokens > 60000:
             print(f"El número de tokens de entrada de {json_load} excede el límite de 60.000.")
         else:
             json_files.append(json_load)
+            # Enviar la solicitud a la API de OpenAI
             response = client.chat.completions.create(
                 model=chatGPTmodel,
                 messages=[
@@ -1733,8 +1879,9 @@ def analisisIA(asignatura: Asignatura):
             respuesta = response.choices[0].message.content
             results_IA.append(respuesta)
             print(respuesta)
-            time.sleep(25)
-
+            time.sleep(25) # Esperar para evitar exceder los límites de la API
+    
+    # Almacenar los resultados en un diccionario global
     resultados_IA = {
         "json": json_files,
         "IA": results_IA
@@ -1742,6 +1889,7 @@ def analisisIA(asignatura: Asignatura):
 
     print(resultados_IA)
 
+    # Actualizar el estado de los resultados
     if not resultados_IA:
         hayResultados = 0
     else:
@@ -1750,23 +1898,28 @@ def analisisIA(asignatura: Asignatura):
     return {"mensaje": f"El análisis para la asignatura '{asignatura}' se ha completado exitosamente."}
 
 
+# Obtiene los resultados del analisis de IA
 @api_app.get("/obtenerResultados")
 def obtener_resultados():
     global hayResultados
+    # Verificar si hay resultados disponibles
     if hayResultados==0:
         raise HTTPException(status_code=400, detail="No existen atributos calculados")
 
+    # Devolver los resultados junto con la asignatura
     resultados_dict = {**resultados_IA, "asignatura": subject}
 
     return JSONResponse(content=resultados_dict)
 
 
+# Permite subir un archivo que contenga los atributos precalculados
 @api_app.post("/uploadResults")
 async def upload_file(file: UploadFile = File(...)):
     global resultados_IA
     global hayResultados
     global subject
 
+    # Verificar que el archivo sea de tipo texto plano
     if file.content_type == 'text/plain':
         contents = await file.read()
         # Convertir el contenido del archivo a un string
@@ -1784,18 +1937,20 @@ async def upload_file(file: UploadFile = File(...)):
             elif current_key:
                 data_dict[current_key] += eval(line.strip())
         
+        # Obtener la lista de archivos JSON
         json_names = []
         for filename in os.listdir(UPLOAD_DIR):
             if filename.endswith(".json"):
                 json_names.append(filename)
-
+        
+        # Verificar que los archivos mencionados en el archivo existan en el directorio
         for jsonn in data_dict['json']:
             if jsonn not in json_names:
                 hayResultados = 0
                 print("El archivo seleccionado no pertenece a las conversaciones cargadas.")
                 return JSONResponse(content={"status": "error", "message": "El archivo seleccionado no pertenece a las conversaciones cargadas."}, status_code=400)
             
-
+        # Actualizar las variables globales con los datos del archivo
         resultados_IA = {key: data_dict[key] for key in ['json', 'IA']}
         subject = data_dict['asignatura'][0]
         hayResultados = 1
@@ -1803,17 +1958,22 @@ async def upload_file(file: UploadFile = File(...)):
         print(resultados_IA)
         print(subject)
         
+        # Devolver una respuesta de éxito con los datos procesados
         return JSONResponse(content={"status": "success", "data": data_dict})
     else:
+        # Devolver un error si el archivo no es de tipo texto plano
         return JSONResponse(content={"status": "error", "message": "Tipo de archivo no válido"}, status_code=400)
 
 
+# Analiza las conversaciones cargadas para predecir utilizando la API de OpenAI
 @api_app.get("/obtener_valores_ia")
 def obtener_valores_ia():
     global subject
 
+    # Obtener el nombre de la asignatura
     asignatura_name = subject
 
+    # Crear el prompt para la API de OpenAI
     prompt = (
         "Analiza la conversación anterior de un alumno con Chat GPT y responde solo con "
         "dos números separados por una coma. El primer número debe indicar el porcentaje de "
@@ -1823,21 +1983,25 @@ def obtener_valores_ia():
         "No des explicaciones adicionales. Asegurate que el formato sea 'x, y', siendo x e y números"
     )
 
+    # Obtener la lista de archivos JSON
     json_names = []
     for filename in os.listdir(UPLOAD_PREDICT):
         if filename.endswith(".json"):
             json_names.append(filename)
-
+    
+    # Inicializar el cliente de OpenAI
     client = OpenAI(api_key=api_key)
 
     json_files = []
     results_IA = []
 
+    # Procesar cada archivo JSON
     for jsonn in json_names:
         path = UPLOAD_PREDICT / jsonn
         aux_conversations = load_conversations(path)
         json_load = jsonn
 
+        # Crear una lista de mensajes para enviar a la API de OpenAI
         messages = []
         for conversation in aux_conversations:
             for msg in conversation.messages:
@@ -1848,7 +2012,8 @@ def obtener_valores_ia():
                     "role": msg.role,
                     "text": msg.text
                 })
-
+        
+        # Convertir los mensajes a una cadena JSON
         messages_str = json.dumps(messages, indent=4)
         messages_decode = messages_str.encode().decode('unicode_escape')
 
@@ -1858,12 +2023,14 @@ def obtener_valores_ia():
         # Contar tokens
         input_tokens = count_tokens(combined_messages)
 
+        # Verificar si el número de tokens excede el límite
         if input_tokens > 60000:
             error_message = f"El número de tokens de entrada de {json_load} excede el límite de 60,000."
             print(error_message)
             return JSONResponse(content={"error": error_message}, status_code=400)
         else:
             json_files.append(json_load)
+            # Enviar la solicitud a la API de OpenAI
             response = client.chat.completions.create(
                 model=chatGPTmodel,
                 messages=[
@@ -1876,8 +2043,9 @@ def obtener_valores_ia():
             respuesta = response.choices[0].message.content
             results_IA.append(respuesta)
             print(respuesta)
-            time.sleep(25)
-
+            time.sleep(25) # Esperar para evitar exceder los límites de la API
+    
+    # Diccionario para almacenar los resultados obtenidos
     atributos_dict = {
         "json": json_files,
         "relacion": [],
@@ -1902,7 +2070,8 @@ def obtener_valores_ia():
     return JSONResponse(content=atributos_dict)
 
 
-
+# Conecta a la base de datos y crea la tabla 'favorites' si no existe
+# La tabla almacena el estado de favorito (is_favorite) para cada conversación
 def connect_settings_db():
     conn = sqlite3.connect(DB_SETTINGS)
     cursor = conn.cursor()
@@ -1915,6 +2084,8 @@ def connect_settings_db():
     conn.commit()
     return conn
 
-
+# Montar la aplicación API en la ruta "/api"
 app.mount("/api", api_app)
+
+# Montar archivos estáticos (HTML, CSS, JS) en la ruta raíz "/"
 app.mount("/", StaticFiles(directory="static", html=True), name="Static")

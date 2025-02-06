@@ -31,6 +31,7 @@ function ayuda() {
     let atribCalculados = 0;
     let chatsEvaluados = 0;
     let necesitaEvaluar = false;
+    let necesitaValoresIA = false;
 
 //Pagina evaluar
 function openCustomModal(url) {
@@ -204,9 +205,10 @@ async function enviarDatos() {
         });
 }
 
-
+let abortController; // Guardar el controlador de aborto para cancelar solicitudes anteriores
 
 function mostrarFormularioPrediccion(caracteristicas, metodo, etiqueta, porcentaje, resultadoId) {
+    console.log(caracteristicas, metodo, etiqueta, porcentaje, resultadoId);
     // Guardar los parámetros en las variables globales
     globalMetodo = metodo;
     globalEtiqueta = etiqueta;
@@ -216,10 +218,13 @@ function mostrarFormularioPrediccion(caracteristicas, metodo, etiqueta, porcenta
     // Dividir las características
     const caracteristicasArray = caracteristicas.split(', ');
 
+
+
     // Verificar si hay que calcular caracteristicas mediante ia
-    const necesitaValoresIA = caracteristicasArray.some(caracteristica => 
+    necesitaValoresIA = caracteristicasArray.some(caracteristica => 
         caracteristica === '(IA) - % Relación con la asignatura' || caracteristica === '(IA) - % Conocimiento sobre la asignatura'
     );
+    console.log(necesitaValoresIA);
 
     // Verificar si hay que evaluar 
     necesitaEvaluar = caracteristicasArray.some(caracteristica => 
@@ -243,124 +248,150 @@ function mostrarFormularioPrediccion(caracteristicas, metodo, etiqueta, porcenta
         }
     }
 
+    // Configurar el formulario
+    const form = document.getElementById('upload-form');
+    // Eliminar el listener anterior si existe
+    form.removeEventListener('submit', uploadform);
+    form.addEventListener('submit', (event) => uploadform(event, caracteristicasArray)); // Agregar nuevo listener
+
     // Mostrar el modal
     document.getElementById('prediccionModal').style.display = 'block';
+}
+
+
+
+async function uploadform(event, caracteristicasArray) {
+    event.preventDefault();
+
+    // Crear un nuevo AbortController para cada solicitud
+    if (abortController) {
+        abortController.abort(); // Abortar la solicitud anterior si existe
+    }
+    abortController = new AbortController(); // Crear un nuevo controlador de aborto
+    const signal = abortController.signal; // Obtener la señal para pasarla a la solicitud
 
     const form = document.getElementById('upload-form');
-    form.addEventListener('submit', async (event) => {
-        event.preventDefault();
+    const formData = new FormData(form);
+    const resultDiv = document.getElementById('result');
+    const errorDiv = document.getElementById('error');
 
-        const formData = new FormData(form);
-        const resultDiv = document.getElementById('result');
-        const errorDiv = document.getElementById('error');
+    try {
+        // Realizar la solicitud a la API
+        const response = await fetch('/api/upload-zip-prediction', {
+            method: 'POST',
+            body: formData,
+            signal: signal // Pasamos la señal de aborto a la solicitud
+        });
+        const data = await response.json();
 
-        try {
-            // Realizar la solicitud a la API
-            const response = await fetch('/api/upload-zip-prediction', {
-                method: 'POST',
-                body: formData
-            });
-            const data = await response.json();
+        if (response.ok && !data.isUploadDirEmpty) {
 
-            if (response.ok && !data.isUploadDirEmpty) {
-                
 
-                // Solicitar los datos de los chats de los alumnos
-                const responseDatos = await fetch('/api/obtener-datos-chats');
-                const datos = await responseDatos.json();
+            // Solicitar los datos de los chats de los alumnos
+            const responseDatos = await fetch('/api/obtener-datos-chats');
+            const datos = await responseDatos.json();
 
-                if (responseDatos.ok) {
-                    // Filtrar los datos de cada alumno según las características seleccionadas
-                    datosAlumnosParaPredecir = {
-                        filename: datos.filename,
-                        promedio_mensajes: datos.promedio_mensajes,
-                        longitud_promedio: datos.longitud_promedio,
-                        dispersion_promedio: datos.dispersion_promedio,
-                        caracteristicas: caracteristicasArray
-                    };
+            if (responseDatos.ok) {
+                // Filtrar los datos de cada alumno según las características seleccionadas
+                datosAlumnosParaPredecir = {
+                    filename: datos.filename,
+                    promedio_mensajes: datos.promedio_mensajes,
+                    longitud_promedio: datos.longitud_promedio,
+                    dispersion_promedio: datos.dispersion_promedio,
+                    caracteristicas: caracteristicasArray
+                };
 
-                    atribCalculados = 0;
+                atribCalculados = 0;
 
-                    console.log("Datos filtrados de alumnos:", datosAlumnosParaPredecir);
+                console.log("Datos filtrados de alumnos:", datosAlumnosParaPredecir);
 
-                    if (necesitaValoresIA) {
-                         // Mostrar el indicador de carga
-                        var loadingIndicator = document.getElementById('loading-indicator');
-                        loadingIndicator.style.display = 'block';
-                        try {
-                            const responseIA = await fetch('/api/obtener_valores_ia');
-                            const datosIA = await responseIA.json();
+                necesitaValoresIA = caracteristicasArray.some(caracteristica =>
+                    caracteristica === '(IA) - % Relación con la asignatura' || caracteristica === '(IA) - % Conocimiento sobre la asignatura'
+                );
+                console.log("Necesita IA:", necesitaValoresIA);
+                if (necesitaValoresIA === true) {
+                    console.log("Necesita IA2:", necesitaValoresIA);
+                    // Mostrar el indicador de carga
+                    var loadingIndicator = document.getElementById('loading-indicator');
+                    loadingIndicator.style.display = 'block';
+                    try {
+                        const responseIA = await fetch('/api/obtener_valores_ia');
+                        const datosIA = await responseIA.json();
 
-                            if (responseIA.ok) {
-                                datosAlumnosParaPredecir = {
-                                    ...datosAlumnosParaPredecir,
-                                    relacionIA: datosIA.relacion,
-                                    conocimientoIA: datosIA.conocimiento
-                                };
-                                atribCalculados = 1;
-                                resultDiv.textContent = 'Archivo cargado y extraído exitosamente.';
-                                errorDiv.style.display = 'none';
-                                errorDiv.textContent = '';
-                                console.log("Datos de IA obtenidos:", datosAlumnosParaPredecir);
-                                // Habilitar boton
-                                document.getElementById("button-aceptar").classList.remove('boton-disabled');
-                            } else {
-                                throw new Error('Error al obtener los valores de IA');
-                                document.getElementById("button-aceptar").classList.add('boton-disabled');
-                                datosAlumnosParaPredecir = {};
-                            }
-                        } catch (error) {
-                            console.error("Error:", error);
-                            const errorDiv = document.getElementById('error');
-                            errorDiv.textContent = 'Error al obtener los valores de IA';
-                            errorDiv.style.display = 'block';
+                        if (responseIA.ok) {
+                            datosAlumnosParaPredecir = {
+                                ...datosAlumnosParaPredecir,
+                                relacionIA: datosIA.relacion,
+                                conocimientoIA: datosIA.conocimiento
+                            };
+                            atribCalculados = 1;
+                            resultDiv.textContent = 'Archivo cargado y extraído exitosamente.';
+                            errorDiv.style.display = 'none';
+                            errorDiv.textContent = '';
+                            console.log("Datos de IA obtenidos:", datosAlumnosParaPredecir);
+                            // Habilitar boton
+                            document.getElementById("button-aceptar").classList.remove('boton-disabled');
+                        } else {
+                            throw new Error('Error al obtener los valores de IA');
                             document.getElementById("button-aceptar").classList.add('boton-disabled');
                             datosAlumnosParaPredecir = {};
-                            return; // Detener ejecución si hay error en la obtención de IA
-                        } finally {
-                            // Ocultar el indicador de carga
-                            loadingIndicator.style.display = 'none';
                         }
-                    } else {
-                        resultDiv.textContent = 'Archivo cargado y extraído exitosamente.';
-                        errorDiv.style.display = 'none';
-                        errorDiv.textContent = '';
-                        // Habilitar boton
-                        document.getElementById("button-aceptar").classList.remove('boton-disabled');
+                    } catch (error) {
+                        console.error("Error:", error);
+                        const errorDiv = document.getElementById('error');
+                        errorDiv.textContent = 'Error al obtener los valores de IA';
+                        errorDiv.style.display = 'block';
+                        document.getElementById("button-aceptar").classList.add('boton-disabled');
+                        datosAlumnosParaPredecir = {};
+                    } finally {
+                        // Ocultar el indicador de carga
+                        loadingIndicator.style.display = 'none';
                     }
-
                 } else {
-                    errorDiv.textContent = 'Error al obtener los datos de los chats de los alumnos.';
-                    errorDiv.style.display = 'block';
-                    resultDiv.textContent = '';
-
-                    // Deshabilitar boton
-                    document.getElementById("button-aceptar").classList.add('boton-disabled');
-                    datosAlumnosParaPredecir = {};
-                    atribCalculados = 0;
+                    resultDiv.textContent = 'Archivo cargado y extraído exitosamente.';
+                    errorDiv.style.display = 'none';
+                    errorDiv.textContent = '';
+                    // Habilitar boton
+                    document.getElementById("button-aceptar").classList.remove('boton-disabled');
                 }
                 
             } else {
-                errorDiv.textContent = 'Error: No se ha encontrado ningun archivo JSON o la estructura del ZIP es incorrecta';
+                errorDiv.textContent = 'Error al obtener los datos de los chats de los alumnos.';
                 errorDiv.style.display = 'block';
                 resultDiv.textContent = '';
+
                 // Deshabilitar boton
                 document.getElementById("button-aceptar").classList.add('boton-disabled');
                 datosAlumnosParaPredecir = {};
+                atribCalculados = 0;
             }
-
-        } catch (error) {
-            // Manejar cualquier error que ocurra durante la solicitud
-            console.error("Error:", error);
-            errorDiv.textContent = 'Ha ocurrido un error en la comunicación con el servidor.';
+        } else {
+            errorDiv.textContent = 'Error: No se ha encontrado ningun archivo JSON o la estructura del ZIP es incorrecta';
             errorDiv.style.display = 'block';
             resultDiv.textContent = '';
             // Deshabilitar boton
             document.getElementById("button-aceptar").classList.add('boton-disabled');
             datosAlumnosParaPredecir = {};
         }
-    });
+
+    } catch (error) {
+        // Manejar cualquier error que ocurra durante la solicitud
+        if (error.name === 'AbortError') {
+            // Si el error es un aborto, no mostramos el mensaje de error
+            console.log("Solicitud cancelada");
+        } else {
+            // Si es otro tipo de error, mostramos el mensaje de error
+            console.error("Error:", error);
+            errorDiv.textContent = 'Ha ocurrido un error en la comunicación con el servidor.';
+            errorDiv.style.display = 'block';
+            resultDiv.textContent = '';
+        }
+        // Deshabilitar boton
+        document.getElementById("button-aceptar").classList.add('boton-disabled');
+        datosAlumnosParaPredecir = {};
+    } 
 }
+
 
 function cerrarFormularioPrediccion() {
     // Ocultar el modal
