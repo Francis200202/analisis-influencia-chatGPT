@@ -1,26 +1,34 @@
-﻿let conversationData = null;
+﻿// Variable global para almacenar las conversaciones
+let conversationData = null;
 
+// Escucha mensajes que se envían a la ventana
 window.addEventListener("message", (event) => {
     if (event.data.action === "navigateConversation") {
-        const direction = event.data.direction;
+        const direction = event.data.direction; // Obtener la dirección de navegación ("prev" o "next")
 
-        // Determinar el archivo anterior o siguiente
+        // Cambiar al archivo de conversación anterior o siguiente
         changeSelectedFile(direction);
     }
 });
 
+// Función para cambiar el archivo de conversaciones seleccionado
 function changeSelectedFile(direction) {
     const jsonSelect = document.getElementById("jsonSelect");
-    const options = Array.from(jsonSelect.options);
-    const currentIndex = options.findIndex(option => option.value === jsonSelect.value);
+    const options = Array.from(jsonSelect.options); // Convertir las opciones del dropdown en un array
+    const currentIndex = options.findIndex(option => option.value === jsonSelect.value); // Obtener el índice de la opción seleccionada actualmente
 
+    // Navegar al archivo anterior
     if (direction === "prev" && currentIndex > 0) {
         // Seleccionar el archivo anterior
         jsonSelect.value = options[currentIndex - 1].value;
-    } else if (direction === "next" && currentIndex < options.length - 1) {
+    }
+    // Navegar al archivo siguiente
+    else if (direction === "next" && currentIndex < options.length - 1) {
         // Seleccionar el archivo siguiente
         jsonSelect.value = options[currentIndex + 1].value;
-    } else {
+    }
+    // Si no hay más archivos en la dirección solicitada
+    else {
         console.log("No hay más conversaciones en esta dirección.");
         return;
     }
@@ -29,6 +37,7 @@ function changeSelectedFile(direction) {
     handleConversationSelect();
 }
 
+// Función para manejar la selección de una conversación
 function handleConversationSelect() {
     const selectedFilePath = document.getElementById("jsonSelect").value;
     if (selectedFilePath) {
@@ -53,7 +62,7 @@ function handleConversationSelect() {
     }
 }
 
-//Obtener lista de archivos JSON del backend
+// Obtiene la lista de archivos JSON disponibles en el backend y los carga en un selector
 async function loadJsonFiles() {
     try {
         // Comprobar si estan evaluados todos los alumnos
@@ -63,11 +72,13 @@ async function loadJsonFiles() {
             console.log("Enviando mensaje al padre: todos evaluados");
             console.log(dataEv.alumnosEvaluados);
             console.log(dataEv.totalAlumnos);
+            // Enviar mensaje al padre para habilitar el botón de aceptar
             window.parent.postMessage({ action: "updateAcceptButton", state: true }, "*");
         } else {
             console.log("Enviando mensaje al padre: todos evaluados");
             console.log(dataEv.alumnosEvaluados);
             console.log(dataEv.totalAlumnos);
+            // Enviar mensaje al padre para deshabilitar el botón de aceptar
             window.parent.postMessage({ action: "updateAcceptButton", state: false }, "*");
         }
 
@@ -108,13 +119,15 @@ async function loadJsonFiles() {
     }
 }
 
-let selectedConvElem = null;  // Global variable to track selected conversation
+let selectedConvElem = null;  // Variable global para rastrear la conversación seleccionada
 
+// Función para cargar las conversaciones desde el backend
 async function loadConversations() {
     try {
         const response = await fetch("/api/conversations-predict");
-        conversationData = await response.json();
+        conversationData = await response.json(); // Almacena las conversaciones del alumno seleccionado
 
+        // Llenar el desplegable de grupos y la lista de conversaciones
         populateGroupDropdown(conversationData);
         populateConversationsList();
 
@@ -127,6 +140,7 @@ async function loadConversations() {
             selectedConvElem = conv;
         }
 
+        // Obtener el nombre de la conversacion seleccionada
         const selectElement = document.getElementById('jsonSelect');
         const nombre = selectElement.value;
 
@@ -180,6 +194,7 @@ async function loadConversations() {
     }
 }
 
+// Llena el filtro de grupos con los nombres de los grupos de conversación disponibles
 function populateGroupDropdown(conversations) {
     const groupSet = new Set();
     conversations.forEach(conv => {
@@ -189,6 +204,7 @@ function populateGroupDropdown(conversations) {
     });
 
     const groupFilterElem = document.getElementById("groupFilter");
+    // Agregar las opciones
     Array.from(groupSet).forEach(group => {
         const optionElem = document.createElement("option");
         optionElem.value = group;
@@ -197,14 +213,15 @@ function populateGroupDropdown(conversations) {
     });
 }
 
+// Función para rellenar la lista de conversaciones en la barra lateral
 function populateConversationsList() {
     const sidebar = document.getElementById("sidebar-conversations");
-    sidebar.innerHTML = ""; // Clear previous conversations
+    sidebar.innerHTML = ""; // Limpiar conversaciones previas
 
     const selectedGroup = document.getElementById("groupFilter").value;
     const searchText = document.getElementById("textFilter").value.toLowerCase();
     
-    // Apply filters
+    // Aplicar filtros
     const filteredData = conversationData.filter(conv => {
         return (!selectedGroup || (conv.group && conv.group === selectedGroup) ||
                 (selectedGroup == "*" && conv.is_favorite)) &&
@@ -213,8 +230,9 @@ function populateConversationsList() {
 
     let currentGroup = null;
 
+    // Iterar sobre las conversaciones filtradas y agregarlas a la barra lateral
     filteredData.forEach((conv) => {
-        // Check if the conversation belongs to a new group
+        // Verificar si la conversación pertenece a un nuevo grupo y agregar un encabezado
         if (conv.group !== currentGroup) {
             currentGroup = conv.group;
 
@@ -225,7 +243,8 @@ function populateConversationsList() {
                 </div>
             `);
         }
-    
+
+        // Agregar cada conversación a la barra lateral
         sidebar.insertAdjacentHTML("beforeend", `
             <div class="p-2 hover:bg-gray-300 cursor-pointer flex justify-between relative group" id="conv-${conv.id}">
             <div class="inline-flex items-center">
@@ -239,10 +258,12 @@ function populateConversationsList() {
                 </div>
             </div>
         `);
-    
+
+        // Agregar evento de clic a la conversación para cargar los mensajes
         document.getElementById(`conv-${conv.id}`).addEventListener("click", function () {
             loadChatMessages(conv.id);
 
+            // Deseleccionar la conversación previamente seleccionada y resaltar la nueva
             unSelectConversation();
             this.classList.add("bg-gray-400");
             selectedConvElem = this;
@@ -250,6 +271,7 @@ function populateConversationsList() {
     });
 }
 
+// Función para marcar o desmarcar una conversación como favorita
 async function handleHeartClick(convId) {
     try {
         const response = await fetch(`/api/toggle_favorite?conv_id=${convId}`, {
@@ -257,13 +279,13 @@ async function handleHeartClick(convId) {
         });
         const data = await response.json();
 
-        // Update the conversationData array
+        // Actualizar el estado de favorito
         const conversation = conversationData.find(conv => conv.id === convId);
         if (conversation) {
             conversation.is_favorite = data.is_favorite;
         }
         
-        // Update the UI based on the new favorite status
+        // Actualizar la interfaz de usuario con el nuevo estado de favorito
         const heartContainer = document.querySelector(`#conv-${convId} .heart-div`);
         if (data.is_favorite) {
             heartContainer.classList.add("is-favorite");
@@ -275,6 +297,7 @@ async function handleHeartClick(convId) {
     }
 }
 
+// Función para cargar los mensajes de una conversación seleccionada
 async function loadChatMessages(convId) {
     try {
         const response = await fetch(`/api/conversations-predict/${encodeURIComponent(convId)}/messages`);
@@ -288,10 +311,11 @@ async function loadChatMessages(convId) {
         document.getElementById("main-content").style.display = "block";
 
 
-        // Populate the main content with messages
+        // Iterar sobre los mensajes de la conversación y agregarlos al contenido principal
         const messages = data.messages;
         let bgColorIndex = 0;
         messages.forEach((msg) => {
+            // Alternar colores de fondo para diferenciar mensajes
             const bgColorClass = bgColorIndex % 2 === 0 ? '' : 'bg-gray-200';
             mainContent.insertAdjacentHTML('beforeend', `
                 <div class="p-2 border-b ${bgColorClass}">
@@ -305,18 +329,20 @@ async function loadChatMessages(convId) {
                 bgColorIndex++;
             }
     });
-
+        // Desplazar la vista al inicio
         scrollToTop();
     } catch (error) {
         console.error("No se pudieron cargar los mensajes:", error);
     }
 }
 
+// Función para buscar conversaciones
 async function searchConversations(query) { 
     try { 
         document.getElementById("main-content").style.display = "block";
         const mainContent = document.getElementById("main-content");
-        
+
+        // Mostrar mensaje de carga mientras se busca
         mainContent.innerHTML = `
             <div class="p-2 pt-8">
                 Búscando...
@@ -326,21 +352,24 @@ async function searchConversations(query) {
             </div>
         `;
 
+        // Realizar la solicitud para obtener las conversaciones basadas en la consulta
         const response = await fetch(`/api/search-predict?query=${query}`);
         const data = await response.json();
 
-        mainContent.innerHTML = ""; // Clear previous messages
+        mainContent.innerHTML = ""; // Limpiar contenido anterior
 
+        // Si no se encuentran resultados, mostrar un mensaje indicando que no hay resultados
         if (data.length === 0) {
-            // if msg is empty, display a message
             mainContent.insertAdjacentHTML('beforeend', `
                 <div class="p-2 pt-8">
                     No results found.
                 </div>
             `);
         }
-        else{
+        else {
+            // Si hay resultados, mostrar cada mensaje en el contenido principal
             data.forEach((msg, index) => {
+                // Alternar colores de fondo para mejorar la visibilidad
                 const bgColorClass = index % 2 === 0 ? '' : 'bg-gray-200';
                 mainContent.insertAdjacentHTML('beforeend', `
                     <div class="p-2 border-b pb-12 ${bgColorClass}">
@@ -352,8 +381,9 @@ async function searchConversations(query) {
                 `);
             });
         }
-
+        // Hacer scroll hacia la parte superior del contenido principal
         scrollToTop();
+        // Desmarcar una conversación previamente seleccionada
         unSelectConversation();
     } catch (error) {
         console.error("Search failed:", error);
@@ -361,28 +391,31 @@ async function searchConversations(query) {
 }
 
 
-// Scroll to the top of the main content area
+// Función para hacer scroll al inicio del contenido principal
 function scrollToTop() {
     document.getElementById("main-content-wrapper").scrollTop = 0;
 }
 
-// Remove background color from previously selected conversation
+// Función para quitar el fondo de una conversación seleccionada previamente
 function unSelectConversation() {
     if (selectedConvElem) {
         selectedConvElem.classList.remove("bg-gray-400");
     }
 }
 
-// Listen for Enter key press on searchInput element
+// Función para manejar la entrada de texto en el campo de búsqueda
 function handleSearchInput(event) {
+    // Solo ejecutar la búsqueda cuando se presiona la tecla Enter
     if (event.key !== "Enter")
         return;
 
+    // Obtener el valor de la consulta y ejecutarla si no está vacía
     const query = encodeURIComponent(document.getElementById("search-input").value);
     if (query)
         searchConversations(query);
 }
 
+// Función que envía los valores de evaluación al servidor para ser guardados
 async function enviarValores() {
     // Obtener los valores de los inputs de rango
     const relacion = document.getElementById("relationProgress").value;
@@ -391,6 +424,7 @@ async function enviarValores() {
     const selectedValue = selectElement.value;
 
     try {
+        // Realizar la solicitud POST para guardar los valores de evaluación
         const response = await fetch("/api/guardar_valor_evaluacion_predict", {
             method: "POST",
             headers: {
@@ -403,38 +437,45 @@ async function enviarValores() {
             })
         });
 
+        // Procesar la respuesta del servidor
         const result = await response.json();
         if (response.ok) {
-            // Cambiar el ícono a uno de éxito
+            // Si la solicitud fue exitosa, actualizar el ícono de estado a éxito
             document.getElementById("statusIcon").innerHTML = "check_circle";
             document.getElementById("statusIcon").classList.remove("text-gray-500");
             document.getElementById("statusIcon").classList.remove("text-red-500");
             document.getElementById("statusIcon").classList.add("text-green-500");
             document.getElementById("statusText").textContent = "Guardados";
 
+            // Actualizar los textos de los labels con los valores de evaluación
             document.getElementById("relationLabel").innerHTML = `% Relación con la asignatura - ${relacion}% <span class="material-symbols-outlined icons" style="font-size: 1.15rem;">check_circle</span>`;
             document.getElementById("knowledgeLabel").innerHTML = `% Conocimiento sobre la asignatura - ${conocimiento}% <span class="material-symbols-outlined icons" style="font-size: 1.15rem;">check_circle</span>`;
 
+            // Añadir una clase para resaltar el selector de archivos JSON
             document.getElementById("jsonSelect").classList.add("border-green-200");
 
+            // Marcar el archivo JSON seleccionado con un fondo verde
             const option = document.querySelector(`option[value="${selectedValue}"]`);
             option.classList.add("bg-green-200");
 
+            // Habilitar el botón de eliminación de valores
             document.getElementById("boton_elim").classList.remove("disabled");
         } else {
-            // Cambiar el ícono a uno de error
+            // Si la solicitud no fue exitosa, mostrar un ícono de error
             document.getElementById("statusIcon").innerHTML = "error";
             document.getElementById("statusIcon").classList.remove("text-gray-500");
             document.getElementById("statusIcon").classList.remove("text-green-500");
             document.getElementById("statusIcon").classList.add("text-red-500");
             document.getElementById("statusText").textContent = "Error al guardar";
 
+            // Deshabilitar el botón de eliminación
             document.getElementById("boton_elim").classList.add("disabled");
         }
 
-        // Comprobar si estan evaluados todos los alumnos
+        // Verificar si todos los alumnos han sido evaluados
         const evaluados = await fetch("/api/estado-evaluacion-predict");
         const dataEv = await evaluados.json();
+        // Enviar mensaje al padre (ventana/iframe) para actualizar el estado del botón de aceptación
         if (dataEv.alumnosEvaluados === dataEv.totalAlumnos) {
             window.parent.postMessage({ action: "updateAcceptButton", state: true }, "*");
         } else {
@@ -443,6 +484,7 @@ async function enviarValores() {
 
 
     } catch (error) {
+        // En caso de error, mostrar un ícono de error y deshabilitar el botón de eliminación
         console.error("Error en la solicitud:", error);
         document.getElementById("statusIcon").innerHTML = "error";
         document.getElementById("statusIcon").classList.remove("text-gray-500");
@@ -450,11 +492,12 @@ async function enviarValores() {
         document.getElementById("statusIcon").classList.add("text-red-500");
         document.getElementById("statusText").textContent = "Error en la comunicación";
 
+        // Deshabilitar el botón de eliminación
         document.getElementById("boton_elim").classList.add("disabled");
     }
 }
 
-
+// Función que elimina los valores de evaluación guardados
 async function eliminarValores() {
     try {
         // Envía una solicitud al servidor para eliminar los valores guardados
@@ -465,23 +508,30 @@ async function eliminarValores() {
         });
         
         if (response.ok) {
+            // Si la eliminación fue exitosa, actualizar el ícono de estado a "eliminado"
             document.getElementById('statusIcon').textContent = 'delete_forever';
             document.getElementById('statusIcon').classList.remove('text-gray-500');
             document.getElementById('statusIcon').classList.remove('text-green-500');
             document.getElementById('statusIcon').classList.add('text-red-500');
             document.getElementById('statusText').textContent = 'Valores eliminados';
 
+            // Restablecer los valores de los labels a su estado original
             document.getElementById("relationLabel").textContent = '% Relación con la asignatura';
             document.getElementById("knowledgeLabel").textContent = '% Conocimiento sobre la asignatura';
 
+            // Eliminar el borde verde del selector de archivos JSON
             document.getElementById("jsonSelect").classList.remove("border-green-200");
+
+            // Eliminar el fondo verde del archivo seleccionado
             const selectElement = document.getElementById('jsonSelect');
             const selectedValue = selectElement.value;
             const option = document.querySelector(`option[value="${selectedValue}"]`);
             option.classList.remove("bg-green-200");
 
+            // Deshabilitar el botón de eliminación
             document.getElementById("boton_elim").classList.add("disabled");
 
+            // Enviar mensaje al padre (ventana/iframe) para actualizar el estado del botón de aceptación
             window.parent.postMessage({ action: "updateAcceptButton", state: false }, "*");
         } else {
             throw new Error('Error al eliminar valores');
@@ -491,9 +541,12 @@ async function eliminarValores() {
     }
 }
 
+// Escuchar el evento de carga del DOM y ejecutar las funciones correspondientes
 window.addEventListener('DOMContentLoaded', (event) => {
+    // Cargar los archivos JSON disponibles al iniciar la página
     loadJsonFiles();
 
+    // Agregar eventos a los elementos para manejar la búsqueda y los filtros
     document.getElementById("search-input").addEventListener("keydown", handleSearchInput);
     document.getElementById("groupFilter").addEventListener("change", populateConversationsList);
     document.getElementById("textFilter").addEventListener("input", populateConversationsList);

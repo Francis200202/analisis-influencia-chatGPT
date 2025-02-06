@@ -1,19 +1,19 @@
-﻿//Pagina estadisticas
+﻿// Función para redirigir a la página de estadísticas
 function pagina_estadisticas() {
     window.location.href = '/templates/conversaciones.html';
 }
 
-//Pagina correlacion
+// Función para redirigir a la página de correlación
 function pagina_correlacion() {
     window.location.href = '/templates/analisis.html';
 }
 
-//Pagina prediccion
+// Función para redirigir a la página de predicción
 function pagina_prediccion() {
     window.location.href = '/templates/entrenamiento.html';
 }
 
-//Pagina evaluar
+// Función para abrir un modal con un iframe que carga la página evaluar
 function openCustomModal(url) {
     // Agrega el efecto difuminado al fondo
     document.getElementById('index').classList.add('blur-background-custom');
@@ -24,6 +24,7 @@ function openCustomModal(url) {
     document.getElementById('custom-modal-iframe').src = url;
 }
 
+// Escuchar mensajes enviados desde el iframe
 window.addEventListener("message", (event) => {
     console.log("Mensaje recibido:", event.data);
     // Verificar la acción del mensaje
@@ -38,6 +39,7 @@ window.addEventListener("message", (event) => {
     }
 });
 
+// Función para navegar dentro del modal (pasar al siguiente o anterior alumno)
 function navigateModal(direction) {
     const iframe = document.getElementById("custom-modal-iframe");
 
@@ -48,6 +50,7 @@ function navigateModal(direction) {
     }
 }
 
+// Función para cerrar el modal
 function closeCustomModal() {
     // Remueve el efecto difuminado del fondo
     document.getElementById('index').classList.remove('blur-background-custom');
@@ -61,6 +64,7 @@ function closeCustomModal() {
     updateEvaluacionStatus();
 }
 
+// Función para mostrar la ayuda
 function ayuda() {
     document.getElementById('help-container').style.display = 'block';
     document.getElementById('ayuda_header').style.display = 'block';
@@ -69,12 +73,15 @@ function ayuda() {
     document.getElementById('inicio-link').style.color = 'white';
 }
 
-
+// Manejar el envío del formulario de carga de archivos ZIP
 const form = document.getElementById('upload-form');
 form.addEventListener('submit', async (event) => {
-    event.preventDefault();
+    event.preventDefault(); // Prevenir el comportamiento por defecto del formulario
 
+    // Obtener los datos del formulario
     const formData = new FormData(form);
+
+    // Elementos de la interfaz que se actualizarán según el resultado de la carga
     const resultDiv = document.getElementById('result');
     const errorDiv = document.getElementById('error');
     const usarIA = document.getElementById('usar-IA');
@@ -82,40 +89,53 @@ form.addEventListener('submit', async (event) => {
     const atrCalc = document.getElementById('atrib-calc');
     const atrCarg = document.getElementById('atrib-carg');
 
+    // Deshabilitar enlaces y botones
     document.getElementById("estadisticasLink").classList.add("disabled");
     document.getElementById("upload-excel").classList.add('boton-disabled');
     document.getElementById("correlacionLink").classList.add('disabled');
     document.getElementById("prediccionLink").classList.add('disabled');
+
+    // Eliminar datos almacenados en la sesión
     sessionStorage.removeItem('estadisticasEnabled');
     sessionStorage.removeItem('corrPredEnabled');
 
     document.getElementById('atrib-calc').style.display = 'none';
 
     try {
-        // Realizar la solicitud a la API
+        // Realizar la solicitud a la API para subir el archivo ZIP
         const response = await fetch('/api/upload-zip2', {
             method: 'POST',
             body: formData
         });
+        // Convertir la respuesta a formato JSON
         const data = await response.json();
 
+        // Verificar si la respuesta es exitosa y si el directorio de subida no está vacío
         if (response.ok && !data.isUploadDirEmpty) {
             resultDiv.textContent = 'Archivo cargado y extraído exitosamente.';
             errorDiv.style.display = 'none';
             errorDiv.textContent = '';
+
+            // Habilitar enlaces y botones
             document.getElementById("estadisticasLink").classList.remove('disabled');
             document.getElementById("upload-excel").classList.remove('boton-disabled');
             sessionStorage.setItem('estadisticasEnabled', 'true');
+
+            // Mostrar opciones adicionales tras la carga exitosa
             usarIA.style.display = 'block';
             hacerEval.style.display = 'block';
             atrCalc.style.display = 'none';
             atrCarg.style.display = 'none';
 
+            // Actualizar el estado de la evaluación
             updateEvaluacionStatus();
         } else {
+            // Mostrar mensaje de error si la estructura del ZIP es incorrecta o faltan archivos JSON
             errorDiv.textContent = 'Error: No se ha encontrado ningun archivo JSON o la estructura del ZIP es incorrecta';
             errorDiv.style.display = 'block';
             resultDiv.textContent = '';
+
+            // Ocultar opciones adicionales y deshabilitar botones
             usarIA.style.display = 'none';
             hacerEval.style.display = 'none';
             document.getElementById("estadisticasLink").classList.add("disabled");
@@ -133,6 +153,8 @@ form.addEventListener('submit', async (event) => {
         errorDiv.textContent = 'Ha ocurrido un error en la comunicación con el servidor.';
         errorDiv.style.display = 'block';
         resultDiv.textContent = '';
+
+        // Ocultar opciones adicionales y deshabilitar botones en caso de error
         usarIA.style.display = 'none';
         hacerEval.style.display = 'none';
         document.getElementById("estadisticasLink").classList.add("disabled");
@@ -143,11 +165,14 @@ form.addEventListener('submit', async (event) => {
     }
 });
 
+// Manejar el envío del formulario de carga del archivo Excel
 const form2 = document.getElementById('upload-form2');
 form2.addEventListener('submit', async (event) => {
     event.preventDefault();
 
     const formData = new FormData(form2);
+
+    // Obtener elementos de la interfaz para mostrar resultados o errores
     const resultDiv = document.getElementById('result2');
     const errorDiv = document.getElementById('error');
 
@@ -161,20 +186,32 @@ form2.addEventListener('submit', async (event) => {
         });
 
         if (response.ok) {
+            // Si la respuesta es exitosa, mostrar mensaje de éxito
             resultDiv.textContent = 'Archivo cargado exitosamente.';
+
+            // Habilitar enlaces para correlación y predicción
             document.getElementById("correlacionLink").classList.remove('disabled');
             document.getElementById("prediccionLink").classList.remove('disabled');
+
+            // Guardar en sessionStorage que estas funciones están habilitadas
             sessionStorage.setItem('corrPredEnabled', 'true');
+
+            // Ocultar el mensaje de error si existía previamente
             errorDiv.style.display = 'none';
             errorDiv.textContent = '';
 
         } else {
+            // Si hay un error en la respuesta, obtener el mensaje del servidor
             const error = await response.json();
             errorDiv.textContent = `Error: ${error.detail}`;
             errorDiv.style.display = 'block';
             resultDiv.textContent = '';
+
+            // Deshabilitar enlaces de correlación y predicción
             document.getElementById("correlacionLink").classList.add('disabled');
             document.getElementById("prediccionLink").classList.add('disabled');
+
+            // Eliminar el estado guardado en sessionStorage
             sessionStorage.removeItem('corrPredEnabled');
         }
 
@@ -182,27 +219,37 @@ form2.addEventListener('submit', async (event) => {
         // Manejar cualquier error que ocurra durante la solicitud
         console.error("Error:", error);
         errorDiv.textContent = 'Ha ocurrido un error en la comunicación con el servidor.';
+
+        // Deshabilitar los enlaces de correlación y predicción en caso de error
         document.getElementById("correlacionLink").classList.add("disabled");
         document.getElementById("prediccionLink").classList.add("disabled");
+
+        // Eliminar el estado guardado en sessionStorage
         sessionStorage.removeItem('corrPredEnabled');
+
+        // Mostrar el mensaje de error y limpiar el resultado anterior
         errorDiv.style.display = 'block';
         resultDiv.textContent = '';
     }
 });
 
+// Función para guardar la evaluación en un fichero txt
 async function guardarEvaluacion() {
+    // Pedir al usuario un nombre para el archivo sin extensión
     let nombreArchivo = prompt("Por favor, introduce el nombre del archivo (sin extensión):");
 
+    // Si el usuario no proporciona un nombre, mostrar una alerta y salir de la función
     if (!nombreArchivo) {
         alert("No se proporcionó un nombre de archivo.");
         return;
     }
 
     try {
-        // Solicitar los resultados desde el servidor (suponiendo que se necesita consultar los datos)
+        // Solicitar los resultados de la evaluación al servidor
         let response = await fetch('/api/obtenerEvaluacion');
         let resultados = await response.json();
 
+        // Verificar si la respuesta es exitosa
         if (!response.ok) {
             alert("Error al obtener los resultados: " + (resultados.detail || "Error desconocido"));
             return;
@@ -217,35 +264,40 @@ async function guardarEvaluacion() {
         // Crear un Blob con el contenido
         let blob = new Blob([contenidoArchivo], { type: 'text/plain;charset=utf-8' });
 
-        // Crear un enlace de descarga
+        // Crear un enlace temporal para descargar el archivo
         let url = window.URL.createObjectURL(blob);
         let a = document.createElement('a');
         a.href = url;
-        a.download = nombreArchivo;
-        document.body.appendChild(a);
-        a.click();
+        a.download = nombreArchivo; // Asignar el nombre de archivo elegido por el usuario
+        document.body.appendChild(a); // Agregar el enlace al documento
+        a.click(); // Simular un clic para iniciar la descarga
 
-        // Limpiar
+        // Limpiar la URL y eliminar el enlace temporal
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
 
+        // Informar al usuario que el archivo ha sido guardado
         alert("Archivo guardado exitosamente.");
 
     } catch (error) {
+        // Manejo de errores en caso de problemas con la comunicación con el servidor
         console.error("Error:", error);
         alert("Ha ocurrido un error en la comunicación con el servidor.");
     }
 }
 
+// Función para mostrar un cuadro de confirmación antes de eliminar la evaluación
 function confirmResetEvaluacion() {
         const isConfirmed = confirm("¿Estás seguro de que quieres borrar toda la evaluación?");
         if (isConfirmed) {
-            resetEvaluacion();
+            resetEvaluacion(); // Si el usuario confirma, se llama a la función que resetea la evaluación
         }
     }
 
+// Función asincrona para resetear la evaluación
 async function resetEvaluacion() {
     try {
+        // Enviar una solicitud POST al servidor para eliminar las evaluaciones
         const response = await fetch('/api/reset-evaluacion', {
             method: 'POST' 
         });
@@ -256,8 +308,10 @@ async function resetEvaluacion() {
     }
 }
 
+// Función asincrona para actualizar el estado de la evaluación
 async function updateEvaluacionStatus() {
     try {
+        // Hacer una petición GET al servidor para obtener el estado de la evaluación
         const response = await fetch('/api/estado-evaluacion');
         const data = await response.json();
         document.getElementById("evaluacion-status").textContent = `Alumnos evaluados: ${data.alumnosEvaluados} de ${data.totalAlumnos}`;
@@ -266,11 +320,12 @@ async function updateEvaluacionStatus() {
     }
 }
 
+// Evento que se ejecuta cuando se selecciona un archivo en el input de la sección de evaluación
 document.getElementById('fileInput2').addEventListener('change', function(event) {
-        const file = event.target.files[0];
+        const file = event.target.files[0]; // Obtener el archivo seleccionado
         if (file) {
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', file); // Agregar el archivo al FormData para enviarlo
 
             // Realizar la petición POST al servidor para procesar el archivo
             fetch('/api/uploadEvaluacion', {
@@ -282,6 +337,7 @@ document.getElementById('fileInput2').addEventListener('change', function(event)
                 if (data.status === 'success') {
                     console.log('Archivo procesado:', data.data);
 
+                    // Actualizar el estado de evaluación después de cargar el archivo
                     updateEvaluacionStatus();
                 } else {
                     // Mostrar mensaje de error en caso de fallo
@@ -299,11 +355,13 @@ document.getElementById('fileInput2').addEventListener('change', function(event)
         }
     });
 
+// Función para mostrar u ocultar el modal de información sobre la IA
 function infoIA() {
     const modal = document.getElementById('infoModal');
-    modal.classList.toggle('hidden');
+    modal.classList.toggle('hidden'); // Alternar la visibilidad del modal
 }
 
+// Función asincrona para realizar el análisis mediante IA
 async function analisisIA() {
     var asignatura = document.getElementById('input-asignatura').value;
 
@@ -313,7 +371,7 @@ async function analisisIA() {
         return;  // Detener la ejecución si no se ha introducido la asignatura
     }
 
-     // Mostrar el indicador de carga
+    // Mostrar el indicador de carga
     var loadingIndicator = document.getElementById('loading-indicator');
     loadingIndicator.style.display = 'block';
     document.getElementById('atrib-calc').style.display = 'none';
@@ -352,16 +410,18 @@ async function analisisIA() {
     }
 }
 
+// Función asincrona para guardar los resultados en un archivo de texto
 async function guardarResultados() {
     let nombreArchivo = prompt("Por favor, introduce el nombre del archivo (sin extensión):");
 
+    // Verificar si el usuario ingresó un nombre de archivo
     if (!nombreArchivo) {
         alert("No se proporcionó un nombre de archivo.");
         return;
     }
 
     try {
-        // Solicitar los resultados desde el servidor (suponiendo que se necesita consultar los datos)
+        // Solicitar los resultados desde el servidor
         let response = await fetch('/api/obtenerResultados');
         let resultados = await response.json();
 
@@ -387,7 +447,7 @@ async function guardarResultados() {
         document.body.appendChild(a);
         a.click();
 
-        // Limpiar
+        // Limpiar recursos después de la descarga
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
 
@@ -399,6 +459,7 @@ async function guardarResultados() {
     }
 }
 
+// Manejar la carga de archivos desde el input de la sección de calcular atributos mediante IA
 document.getElementById('fileInput').addEventListener('change', function(event) {
         const file = event.target.files[0];
         if (file) {
@@ -437,6 +498,7 @@ document.getElementById('fileInput').addEventListener('change', function(event) 
     });
 
 
+// Ejecutar código una vez que el DOM esté completamente cargado
 document.addEventListener('DOMContentLoaded', function () {
     // Comprobar si 'estadisticasEnabled' está en sessionStorage
     let isEstadisticasEnabled = sessionStorage.getItem('estadisticasEnabled');
@@ -454,6 +516,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.getElementById("usar-IA").style.display = 'block';
                 document.getElementById("hacer-evaluacion").style.display = 'block';
 
+                // Actualizar estado de la evaluación
                 updateEvaluacionStatus();
             } else {
                 // Deshabilitar el enlace si la carpeta está vacía

@@ -3,13 +3,16 @@
 <head>
     <meta charset="utf-8" />
     <title>Entrenamiento</title>
+    <!-- Enlace a la hoja de estilos de Tailwind CSS -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.15/dist/tailwind.min.css" rel="stylesheet" />
+    <!-- Enlace a los iconos de Google Material Symbols -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
 </head>
 
 <body class="relative overflow-hidden">
-    <!-- Header -->
+    <!-- Header de la página -->
     <div class="bg-black text-white p-4 flex items-center sticky top-0 z-10 header" id="header">
+        <!-- Enlace a la página de inicio -->
         <div class="w-1/8">
             <h1 class="text-1xl ml-4 flex-grow">
                 <a href="/" class="icon-group">
@@ -18,6 +21,7 @@
                 </a>
             </h1>
         </div>
+        <!-- Menú desplegable de análisis -->
         <div class="w-1/8 items-center relative group z-50">
             <h1 class="text-1xl ml-8 flex-grow">
                 <a href="#" class="icon-group pagina-activa" id="analisisLink">
@@ -26,20 +30,23 @@
                     <span class="material-symbols-outlined icon">stat_minus_1</span>
                 </a>
             </h1>
-            <!-- Dropdown Content -->
+            <!-- Contenido del menú desplegable -->
             <div class="dropdown-content hidden absolute bg-black mt-2 w-44 z-50 rounded-md shadow-lg group-hover:block">
+                <!-- Enlace a la página estadísticas -->
                 <h1 class="text-1xl px-4 py-2 flex-grow">
                     <a href="#" id="estadisticasLink" class="icon-group" onclick="pagina_conversaciones()">
                         <span class="material-symbols-outlined icons">bar_chart</span>
                         ESTADÍSTICAS
                     </a>
                 </h1>
+                <!-- Enlace a la página correlación -->
                 <h1 class="text-1xl px-4 py-2 flex-grow">
                     <a href="#" id="correlacionLink" class="icon-group" onclick="pagina_correlacion()">
                         <span class="material-symbols-outlined icons">grain</span>
                         CORRELACIÓN
                     </a>
                 </h1>
+                <!-- Página en la que nos encontramos -->
                 <h1 class="text-1xl px-4 py-2 flex-grow">
                     <a href="/templates/entrenamiento.html" id="prediccionLink" class="icon-group pagina-activa">
                         <span class="material-symbols-outlined icons">network_node</span>
@@ -48,6 +55,7 @@
                 </h1>
             </div>
         </div>
+        <!-- Enlace a la sección de ayuda -->
         <div class="w-1/8 items-center">
             <h1 class="text-1xl ml-8 flex-grow">
                 <a href="#" class="icon-group" id="ayuda-link" onclick="ayuda()">
@@ -61,30 +69,36 @@
     <!-- Overlay y Modal específico -->
     <div id="custom-modal-overlay" style="display: none;">
         <div id="custom-modal">
+            <!-- Botón para cerrar el modal -->
             <button class="close-button-custom icon-group" onclick="closeCustomModal()">
                 <span class="material-symbols-outlined p-1 icons">close</span>
             </button>
+            <!-- Iframe para cargar evaluarParaPredecir.html en el modal -->
             <iframe id="custom-modal-iframe" src="" width="100%" height="100%" frameborder="0"></iframe>
         </div>
+        <!-- Botones de navegación para el modal -->
         <button id="prev-button" class="nav-button" onclick="navigateModal('prev')">
             <span class="material-symbols-outlined p-1 icons">arrow_back_ios_new</span>
         </button>
         <button id="next-button" class="nav-button" onclick="navigateModal('next')">
             <span class="material-symbols-outlined p-1 icons">arrow_forward_ios</span>
         </button>
+        <!-- Pie de página del modal con botón de aceptar -->
         <div class="modal-footer">
             <button id="accept-button" class="boton-disabled" onclick="closeCustomModalAndPredict()">Aceptar</button>
         </div>
     </div>
 
-    <!-- Entrenamiento -->
+    <!-- Sección de generar modelo y predecir -->
     <div class="p-4 mx-auto overflow-hidden mx-auto" id="analisis">
         <div class="margen-gris">
             <div class="entrenamiento-title" id="transicionP">
                 <h1 class="text-center text-xl">PREDICCIÓN</h1>
             </div>
         </div>
+        <!-- Contenedor para generar modelo de predicción -->
         <div class="items-center mt-10 p-5  mx-10 entrenamiento-container">
+            <!-- Selección del algoritmo -->
             <select class="pt-2 pb-2 mb-4 text-center text-xl entrenamiento-select" id="select-entrenamiento">
                 <option selected>Algoritmo KNN</option>
                 <option>Algoritmo Árbol de decisión</option>
@@ -92,30 +106,33 @@
                 <option>Red neuronal MLP</option>
             </select>
             <div class="entrenamiento-container2 p-4 text-center">
-
+                <!-- Selección de características -->
                 <div class="entrenamiento-content">
                     <h1 class="text-xl text-white p-1">Seleccionar conjunto de características</h1>
                 </div>
+                <!-- Selección de etiqueta a predecir -->
                 <div class="entrenamiento-content">
                     <h1 class="text-xl text-white p-1">Seleccionar etiqueta (a predecir)</h1>
                 </div>
+                <!-- Selección del porcentaje de prueba -->
                 <div class="entrenamiento-content">
                     <h1 class="text-xl text-white p-1">Elegir % de prueba</h1>
                 </div>
-
+                <!-- Lista de características disponibles -->
                 <div class="entrenamiento-caracteristicas">
                     <select class="custom-select text-xl" id="select-caracteristicas" multiple>
                         <option>Promedio de mensajes</option>
                         <option>Longitud promedio de mensajes</option>
                         <option>Dispersión de los mensajes</option>
-                        <!-- Notas -->
                     </select>
                 </div>
+                <!-- Lista de etiquetas disponibles -->
                 <div class="entrenamiento-etiquetas">
                     <select class="text-xl text-center pt-2 pb-2" id="select-etiqueta">
                         <!-- Options -->
                     </select>
                 </div>
+                <!-- Barra deslizante para seleccionar el porcentaje de prueba -->
                 <div class="entrenamiento-barra">
                     <input id="input" type="range" min="1" max="70" step="any" value="20" />
                     <p><output id="value"></output>%</p>
@@ -123,22 +140,26 @@
             </div>
         </div>
 
+        <!-- Botón para generar el modelo -->
         <div class="boton-entrenar">
             <button class="bg-black text-xl p-2 rounded w-full text-white" id="boton-to-train" onclick="enviarDatos()">
                 Generar Modelo
             </button>
         </div>
 
-        <!-- Resultado Entrenamiento -->
+        <!-- Contenedor para mostrar los resultados del entrenamiento -->
         <div id="all-results">
             <!-- Aquí se añadirán los resultados -->
         </div>
 
+        <!-- Modal para cargar conversaciones y realizar predicciones -->
         <div id="prediccionModal" class="modal">
             <div class="modal-content">
+                <!-- Botón para cerrar el modal -->
                 <span class="close" onclick="cerrarFormularioPrediccion()">&times;</span>
                 <h2>Introduzca los chats de los alumnos para predecir</h2>
                 <div class="modal-scroll">
+                    <!-- Sección para cargar un archivo ZIP con conversaciones -->
                     <div class="cargar-chats" id="cargar-zip">
                         <h1>Cargar un archivo ZIP</h1>
                         <form id="upload-form">
@@ -147,14 +168,18 @@
                                 <span class="material-symbols-outlined p-1 icons">upload</span>
                             </button>
                         </form>
+                        <!-- Indicador de carga -->
                         <div id="loading-indicator" style="display: none;">
                             <center><img src="/load.gif" alt="Cargando..." /></center>
                             <p>Este proceso puede durar varios minutos.</p>
                         </div>
+                        <!-- Resultado de la extracción de los archivos y del cálculo de los atributos necesarios -->
                         <div id="result"></div>
+                        <!-- Mensajes de error -->
                         <div id="error"></div>
                     </div>
                 </div>
+                <!-- Botón para aceptar y realizar la predicción -->
                 <div class="button-container">
                     <button id="button-aceptar" class="boton-disabled" onclick="aceptar()">Aceptar</button>
                 </div>
@@ -162,8 +187,10 @@
         </div>
     </div>
 
+    <!-- Sección de ayuda (oculta por defecto) -->
     <div id="ayuda_header">
         <div class="ayuda_header">
+            <!-- Botón para recargar página y mostrar elementos por defecto -->
             <a href="/templates/entrenamiento.html" class="p-2 ml-5 text-1xl icon-group">
                 <span class="material-symbols-outlined p-1 icons">arrow_back</span>
             </a>
@@ -208,16 +235,18 @@
             </ul>
         </div>
     </div>
+    <!-- Enlace a la hoja de estilos -->
     <link href="/css/style.css" rel="stylesheet" />
+    <!-- Enlace al script de entrenamiento -->
     <script src="/js/entrenamiento.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.2.1/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <!-- Script para ejecutar funciones al cargar la página -->
     <script>
         document.addEventListener("DOMContentLoaded", function () {
             transicionPrediccion();
             caracteristicas();
         });
     </script>
+    <!-- Script para actualizar el valor del porcentaje de prueba en tiempo real -->
     <script>
         const value = document.querySelector("#value");
         const input = document.querySelector("#input");

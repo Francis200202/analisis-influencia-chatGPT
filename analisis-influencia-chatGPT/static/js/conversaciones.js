@@ -1,25 +1,30 @@
+// Variable global para almacenar las conversaciones
 let conversationData = null;
 
-//Pagina correlacion
+// Función para redirigir a la página de correlación
 function pagina_correlacion() {
     window.location.href = '/templates/analisis.html';
 }
 
-//Pagina prediccion
+// Función para redirigir a la página de predicción
 function pagina_prediccion() {
     window.location.href = '/templates/entrenamiento.html';
 }
 
+// Función para mostrar la sección de ayuda y ocultar el contenido principal
 function ayuda() {
     document.getElementById('help-container').style.display = 'block';
     document.getElementById('ayuda_header').style.display = 'block';
     document.getElementById('container').style.display = 'none';
     document.getElementById('search-input').style.display = 'none';
+
+    // Cambiar colores de los enlaces para resaltar la ayuda
     document.getElementById('ayuda-link').style.color = '#abebc6';
     document.getElementById('analisisLink').style.color = 'white';
     document.getElementById('estadisticasLink').style.color = 'white';
 }
 
+// Función para manejar la selección de una conversación
 function handleConversationSelect() {
     const selectedFilePath = document.getElementById("jsonSelect").value;
     if (selectedFilePath) {
@@ -38,7 +43,8 @@ function handleConversationSelect() {
                 // Mostrar graficos y ocultar demás pantallas
                 document.getElementById("main-content").style.display = "none";
                 document.getElementById("grafics").style.display = "block";
-                
+
+                // Cargar datos relacionados con la conversación
                 loadConversations();
                 loadActivityStats();
                 loadChatStatistics();
@@ -52,14 +58,15 @@ function handleConversationSelect() {
     }
 }
 
-//Obtener lista de archivos JSON del backend
+// Obtiene la lista de archivos JSON disponibles en el backend y los carga en un selector
 async function loadJsonFiles() {
     fetch("/api/json-files")
         .then(response => response.json())
         .then(data => {
-            const jsonFiles = data.json_files;
+            const jsonFiles = data.json_files; // Obtener la lista de archivos JSON
             const selectElement = document.getElementById('jsonSelect');
-            //selectElement.innerHTML = '<option value="">Selecciona una conversación...</option>';
+
+            // Agregar las opciones al selector de archivos JSON
             jsonFiles.forEach(jsonFile => {
                 const option = document.createElement('option');
                 option.value = jsonFile;
@@ -75,11 +82,13 @@ async function loadJsonFiles() {
         .catch(error => console.error('Error cargando conversacion:', error));
 }
 
+// Función para cargar las conversaciones desde el backend
 async function loadConversations() {
     try {
         const response = await fetch("/api/conversations");
-        conversationData = await response.json();
-        
+        conversationData = await response.json(); // Almacena las conversaciones del alumno seleccionado
+
+        // Llenar el desplegable de grupos y la lista de conversaciones
         populateGroupDropdown(conversationData);
         populateConversationsList();
     } catch (error) {
@@ -87,6 +96,7 @@ async function loadConversations() {
     }
 }
 
+// Llena el filtro de grupos con los nombres de los grupos de conversación disponibles
 function populateGroupDropdown(conversations) {
     const groupSet = new Set();
     conversations.forEach(conv => {
@@ -96,6 +106,7 @@ function populateGroupDropdown(conversations) {
     });
 
     const groupFilterElem = document.getElementById("groupFilter");
+    // Agregar las opciones
     Array.from(groupSet).forEach(group => {
         const optionElem = document.createElement("option");
         optionElem.value = group;
@@ -104,16 +115,17 @@ function populateGroupDropdown(conversations) {
     });
 }
 
-let selectedConvElem = null;  // Global variable to track selected conversation
+let selectedConvElem = null;  // Variable global para rastrear la conversación seleccionada
 
+// Función para rellenar la lista de conversaciones en la barra lateral
 function populateConversationsList() {
     const sidebar = document.getElementById("sidebar-conversations");
-    sidebar.innerHTML = ""; // Clear previous conversations
+    sidebar.innerHTML = ""; // Limpiar conversaciones previas
 
     const selectedGroup = document.getElementById("groupFilter").value;
     const searchText = document.getElementById("textFilter").value.toLowerCase();
     
-    // Apply filters
+    // Aplicar filtros
     const filteredData = conversationData.filter(conv => {
         return (!selectedGroup || (conv.group && conv.group === selectedGroup) ||
                 (selectedGroup == "*" && conv.is_favorite)) &&
@@ -122,19 +134,19 @@ function populateConversationsList() {
 
     let currentGroup = null;
 
+    // Iterar sobre las conversaciones filtradas y agregarlas a la barra lateral
     filteredData.forEach((conv) => {
-        // Check if the conversation belongs to a new group
+        // Verificar si la conversación pertenece a un nuevo grupo y agregar un encabezado
         if (conv.group !== currentGroup) {
             currentGroup = conv.group;
-
-            // Add a group title to the sidebar
             sidebar.insertAdjacentHTML("beforeend", `
                 <div class="p-2 text-gray-700 font-bold">
                     ${currentGroup || "No Group"}
                 </div>
             `);
         }
-    
+
+        // Agregar cada conversación a la barra lateral
         sidebar.insertAdjacentHTML("beforeend", `
             <div class="p-2 hover:bg-gray-300 cursor-pointer flex justify-between relative group" id="conv-${conv.id}">
             <div class="inline-flex items-center">
@@ -148,10 +160,12 @@ function populateConversationsList() {
                 </div>
             </div>
         `);
-    
+
+        // Agregar evento de clic a la conversación para cargar los mensajes
         document.getElementById(`conv-${conv.id}`).addEventListener("click", function () {
             loadChatMessages(conv.id);
 
+            // Deseleccionar la conversación previamente seleccionada y resaltar la nueva
             unSelectConversation();
             this.classList.add("bg-gray-400");
             selectedConvElem = this;
@@ -159,6 +173,7 @@ function populateConversationsList() {
     });
 }
 
+// Función para marcar o desmarcar una conversación como favorita
 async function handleHeartClick(convId) {
     try {
         const response = await fetch(`/api/toggle_favorite?conv_id=${convId}`, {
@@ -166,13 +181,13 @@ async function handleHeartClick(convId) {
         });
         const data = await response.json();
 
-        // Update the conversationData array
+        // Actualizar el estado de favorito
         const conversation = conversationData.find(conv => conv.id === convId);
         if (conversation) {
             conversation.is_favorite = data.is_favorite;
         }
         
-        // Update the UI based on the new favorite status
+        // Actualizar la interfaz de usuario con el nuevo estado de favorito
         const heartContainer = document.querySelector(`#conv-${convId} .heart-div`);
         if (data.is_favorite) {
             heartContainer.classList.add("is-favorite");
@@ -184,6 +199,7 @@ async function handleHeartClick(convId) {
     }
 }
 
+// Función para cargar los mensajes de una conversación seleccionada
 async function loadChatMessages(convId) {
     try {
         const response = await fetch(`/api/conversations/${encodeURIComponent(convId)}/messages`);
@@ -194,10 +210,11 @@ async function loadChatMessages(convId) {
         // Limpiar el contenido existente
         mainContent.innerHTML = "";
 
-        // Ocultar gráficas
+        // Ocultar gráficas y mostrar la sección de mensajes
         document.getElementById("grafics").style.display = "none";
         document.getElementById("main-content").style.display = "block";
 
+        // Botón para regresar a la vista de gráficas
         mainContent.innerHTML = `
             <div class="p-2 border-b text-left">
                 <a href="#" class="icon-group" onclick="handleConversationSelect()">
@@ -207,10 +224,11 @@ async function loadChatMessages(convId) {
             </div>
         `;
 
-        // Populate the main content with messages
+        // Iterar sobre los mensajes de la conversación y agregarlos al contenido principal
         const messages = data.messages;
         let bgColorIndex = 0;
         messages.forEach((msg) => {
+            // Alternar colores de fondo para diferenciar mensajes
             const bgColorClass = bgColorIndex % 2 === 0 ? '' : 'bg-gray-200';
             mainContent.insertAdjacentHTML('beforeend', `
                 <div class="p-2 border-b ${bgColorClass}">
@@ -224,26 +242,33 @@ async function loadChatMessages(convId) {
                 bgColorIndex++;
             }
     });
-
+        // Desplazar la vista al inicio
         scrollToTop();
     } catch (error) {
         console.error("No se pudieron cargar los mensajes:", error);
     }
 }
 
+// Función para cargar las estadísticas de actividad
 async function loadActivityStats() {
     try {
+        // Realiza una solicitud para obtener los datos de la actividad
         const response = await fetch("/api/activity");
         const data = await response.json();
+
+        // Construir el gráfico de actividad y la barra de actividad
         buildActivityGraph(document.getElementById("activity-graph"), { data: data });
         buildActivityBarChart(data);
     } catch (error) {
+        // En caso de error, mostrar un mensaje en la consola
         console.error("No se pudo cargar el gráfico de actividad:", error);
     }
 }
 
+// Función para cargar las estadísticas del chat
 async function loadChatStatistics() {
     try {
+        // Realiza una solicitud para obtener las estadísticas de la conversación
         const response = await fetch('/api/statistics');
         const data = await response.json();
         const tableContainer = document.getElementById('chat-statistics');
@@ -251,13 +276,13 @@ async function loadChatStatistics() {
         // Limpiar estadisticas
         tableContainer.innerHTML = '';
 
-        // Create table header and rows
+        // Crear la cabecera y las filas de la tabla
         let tableHTML = `
             <table class="min-w-full bg-white">
                 <tbody>
         `;
 
-        // Insert table rows based on fetched data
+        // Insertar filas en la tabla basadas en los datos obtenidos
         for (const [key, value] of Object.entries(data)) {
             tableHTML += `
                 <tr>
@@ -267,20 +292,23 @@ async function loadChatStatistics() {
             `;
         }
 
-        // Close table tags
+        // Cerrar las etiquetas de la tabla
         tableHTML += `
                 </tbody>
             </table>
         `;
-    
+
+        // Insertar el HTML de la tabla en el contenedor
         tableContainer.insertAdjacentHTML("beforeend", tableHTML);
     } catch (error) {
         console.error("Error al obtener las estadísticas del chat:", error);
     }
 }
 
+// Función para cargar las notas de un alumno
 async function loadNotes() {
     try {
+        // Realiza una solicitud para obtener las notas
         const response = await fetch('/api/notes');
         const data = await response.json();
         const tableContainer = document.getElementById('notes');
@@ -288,17 +316,19 @@ async function loadNotes() {
         // Limpiar estadisticas
         tableContainer.innerHTML = '';
 
-        // Create table header and rows
+        // Crear la cabecera y las filas de la tabla
         let tableHTML = `
             <table class="min-w-full bg-white">
                 <tbody>
         `;
+
+        // Verificar si hay datos, en caso contrario mostrar un mensaje
         if (!data || Object.keys(data).length === 0) {
             tableHTML += `
                 <p>No hay notas disponibles.</p>
             `;
         }else{
-            // Insert table rows based on fetched data
+            // Insertar filas en la tabla basadas en los datos obtenidos
             for (const [key, value] of Object.entries(data)) {
                 tableHTML += `
                     <tr>
@@ -309,20 +339,23 @@ async function loadNotes() {
             }
         }
 
-        // Close table tags
+        // Cerrar las etiquetas de la tabla
         tableHTML += `
                 </tbody>
             </table>
         `;
-    
+
+        // Insertar el HTML de la tabla en el contenedor
         tableContainer.insertAdjacentHTML("beforeend", tableHTML);
     } catch (error) {
         console.error("Error al obtener notas:", error);
     }
 }
 
+// Función para cargar el valor de evaluación del alumno
 async function loadValorEvaluacion() {
     try {
+        // Realiza una solicitud para obtener el valor de evaluación
         const response = await fetch('/api/valorEval');
         const data = await response.json();
         const tableContainer = document.getElementById('valor_eval');
@@ -330,18 +363,19 @@ async function loadValorEvaluacion() {
         // Limpiar estadisticas
         tableContainer.innerHTML = '';
 
-        // Create table header and rows
+        // Crear la cabecera y las filas de la tabla
         let tableHTML = `
             <table class="min-w-full bg-white">
                 <tbody>
         `;
 
+        // Verificar si hay datos, en caso contrario mostrar un mensaje
         if (!data || Object.keys(data).length === 0) {
             tableHTML += `
                 <p>No se ha evaluado este alumno.</p>
             `;
         }else{
-            // Insertar filas de la tabla de los datos obtenidos
+            // Insertar las filas de la tabla con los valores de evaluación obtenidos
             tableHTML += `
                 <tr>
                     <td class="py-2 px-4 border-b">Relación con la asignatura</td>
@@ -354,20 +388,23 @@ async function loadValorEvaluacion() {
             `;
         }
 
-        // Close table tags
+        // Cerrar las etiquetas de la tabla
         tableHTML += `
                 </tbody>
             </table>
         `;
-    
+
+        // Insertar el HTML de la tabla en el contenedor
         tableContainer.insertAdjacentHTML("beforeend", tableHTML);
     } catch (error) {
         console.error("Error fetching notes:", error);
     }
 }
 
+// Función para cargar los atributos de IA del alumno
 async function loadAtribIA() {
     try {
+        // Realiza una solicitud para obtener los atributos
         const response = await fetch('/api/atributos');
         const data = await response.json();
         const tableContainer = document.getElementById('atrib');
@@ -375,18 +412,19 @@ async function loadAtribIA() {
         // Limpiar estadisticas
         tableContainer.innerHTML = '';
 
-        // Create table header and rows
+        // Crear la cabecera y las filas de la tabla
         let tableHTML = `
             <table class="min-w-full bg-white">
                 <tbody>
         `;
 
+        // Verificar si hay datos, en caso contrario mostrar un mensaje
         if (!data || Object.keys(data).length === 0) {
             tableHTML += `
                 <p>No existen atributos calculados para este alumno.</p>
             `;
         }else{
-            // Insertar filas de la tabla de los datos obtenidos
+            // Insertar las filas de la tabla con los atributos obtenidos
             tableHTML += `
                 <tr>
                     <td class="py-2 px-4 border-b">Relación con la asignatura</td>
@@ -399,24 +437,28 @@ async function loadAtribIA() {
             `;
         }
 
-        // Close table tags
+        // Cerrar las etiquetas de la tabla
         tableHTML += `
                 </tbody>
             </table>
         `;
-    
+
+        // Insertar el HTML de la tabla en el contenedor
         tableContainer.insertAdjacentHTML("beforeend", tableHTML);
     } catch (error) {
         console.error("Error fetching notes:", error);
     }
 }
 
+// Función para buscar conversaciones
 async function searchConversations(query) { 
     try { 
+        // Ocultar gráficos y mostrar el contenido principal mientras se realiza la búsqueda
         document.getElementById("grafics").style.display = "none";
         document.getElementById("main-content").style.display = "block";
         const mainContent = document.getElementById("main-content");
-        
+
+        // Mostrar mensaje de carga mientras se busca
         mainContent.innerHTML = `
             <div class="p-2 pt-8">
                 Búscando...
@@ -426,11 +468,13 @@ async function searchConversations(query) {
             </div>
         `;
 
+        // Realizar la solicitud para obtener las conversaciones basadas en la consulta
         const response = await fetch(`/api/search?query=${query}`);
         const data = await response.json();
 
-        mainContent.innerHTML = ""; // Clear previous messages
+        mainContent.innerHTML = ""; // Limpiar contenido anterior
 
+        // Crear el enlace para volver a las gráficas
         mainContent.innerHTML = `
             <div class="p-2 border-b text-left">
                 <a href="#" class="icon-group" onclick="handleConversationSelect()">
@@ -440,16 +484,18 @@ async function searchConversations(query) {
             </div>
         `;
 
+        // Si no se encuentran resultados, mostrar un mensaje indicando que no hay resultados
         if (data.length === 0) {
-            // if msg is empty, display a message
             mainContent.insertAdjacentHTML('beforeend', `
                 <div class="p-2 pt-8">
-                    No results found.
+                    Resultados no encontrados.
                 </div>
             `);
         }
-        else{
+        else {
+            // Si hay resultados, mostrar cada mensaje en el contenido principal
             data.forEach((msg, index) => {
+                // Alternar colores de fondo para mejorar la visibilidad
                 const bgColorClass = index % 2 === 0 ? '' : 'bg-gray-200';
                 mainContent.insertAdjacentHTML('beforeend', `
                     <div class="p-2 border-b pb-12 ${bgColorClass}">
@@ -461,8 +507,9 @@ async function searchConversations(query) {
                 `);
             });
         }
-
+        // Hacer scroll hacia la parte superior del contenido principal
         scrollToTop();
+        // Desmarcar una conversación previamente seleccionada
         unSelectConversation();
     } catch (error) {
         console.error("Search failed:", error);
@@ -470,29 +517,33 @@ async function searchConversations(query) {
 }
 
 
-// Scroll to the top of the main content area
+// Función para hacer scroll al inicio del contenido principal
 function scrollToTop() {
     document.getElementById("main-content-wrapper").scrollTop = 0;
 }
 
-// Remove background color from previously selected conversation
+// Función para quitar el fondo de una conversación seleccionada previamente
 function unSelectConversation() {
     if (selectedConvElem) {
         selectedConvElem.classList.remove("bg-gray-400");
     }
 }
 
-// Listen for Enter key press on searchInput element
+// Función para manejar la entrada de texto en el campo de búsqueda
 function handleSearchInput(event) {
+    // Solo ejecutar la búsqueda cuando se presiona la tecla Enter
     if (event.key !== "Enter")
         return;
 
+    // Obtener el valor de la consulta y ejecutarla si no está vacía
     const query = encodeURIComponent(document.getElementById("search-input").value);
     if (query)
         searchConversations(query);
 }
 
+// Escuchar cuando la página haya cargado para ejecutar acciones específicas
 window.addEventListener('DOMContentLoaded', (event) => {
+    // Verificar si loas enlaces a las páginas correlación y predicción están habilitadas en la sesión
     let isCorrPredEnabled = sessionStorage.getItem('corrPredEnabled');
 
     if (isCorrPredEnabled === 'true') {
@@ -505,8 +556,10 @@ window.addEventListener('DOMContentLoaded', (event) => {
         document.getElementById("prediccionLink").classList.add('disabled');
     }
 
+    // Cargar archivos JSON al cargar la página
     loadJsonFiles();
 
+    // Agregar listeners para los eventos de búsqueda y filtros
     document.getElementById("search-input").addEventListener("keydown", handleSearchInput);
     document.getElementById("groupFilter").addEventListener("change", populateConversationsList);
     document.getElementById("textFilter").addEventListener("input", populateConversationsList);
