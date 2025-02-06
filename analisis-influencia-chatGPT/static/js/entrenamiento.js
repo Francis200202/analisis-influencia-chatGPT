@@ -346,6 +346,7 @@ async function uploadform(event, caracteristicasArray) {
                                 conocimientoIA: datosIA.conocimiento
                             };
                             atribCalculados = 1; // Indicar que los atributos han sido calculados
+                            resultDiv.style.display = 'block';
                             resultDiv.textContent = 'Archivo cargado y extraído exitosamente.';
                             errorDiv.style.display = 'none';
                             errorDiv.textContent = '';
