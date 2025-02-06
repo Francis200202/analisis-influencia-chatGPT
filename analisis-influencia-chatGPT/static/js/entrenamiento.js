@@ -276,6 +276,10 @@ async function uploadform(event, caracteristicasArray) {
     const errorDiv = document.getElementById('error');
 
     try {
+        // Ocultar errorDiv y resultDiv
+        errorDiv.style.display = 'none';
+        resultDiv.style.display = 'none';
+
         // Realizar la solicitud a la API
         const response = await fetch('/api/upload-zip-prediction', {
             method: 'POST',
@@ -285,8 +289,6 @@ async function uploadform(event, caracteristicasArray) {
         const data = await response.json();
 
         if (response.ok && !data.isUploadDirEmpty) {
-
-
             // Solicitar los datos de los chats de los alumnos
             const responseDatos = await fetch('/api/obtener-datos-chats');
             const datos = await responseDatos.json();
@@ -349,6 +351,7 @@ async function uploadform(event, caracteristicasArray) {
                     }
                 } else {
                     resultDiv.textContent = 'Archivo cargado y extraído exitosamente.';
+                    resultDiv.style.display = 'block';
                     errorDiv.style.display = 'none';
                     errorDiv.textContent = '';
                     // Habilitar boton
